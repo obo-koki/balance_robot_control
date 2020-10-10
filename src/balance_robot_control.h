@@ -1,7 +1,13 @@
-#include <wiringPi.h>
 #include <stdio.h>
+#include <wiringPi.h>
+#include <wiringPiI2C.h>
+#include <cmath>
+
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
+#include <sensor_msgs/Imu.h>
+
+#include "imu.h"
 
 // Pin Info
 ////Encoder
@@ -14,8 +20,8 @@
 class BalanceRobotControl{
     public:
         //variable
-        double encoder_count_R;
-        double encoder_count_L;
+        static double encoder_count_R;
+        static double encoder_count_L;
         //ros
         ros::NodeHandle node_handle_;
         ////Publisher
@@ -28,8 +34,13 @@ class BalanceRobotControl{
         //Constructor
         BalanceRobotControl();
         //Function
-        void encoder_count_R_A();
-        void encoder_count_R_B();
-        void encoder_count_L_A();
-        void encoder_count_L_B();
+        static void encoder_count_R_A();
+        static void encoder_count_R_B();
+        static void encoder_count_L_A();
+        static void encoder_count_L_B();
+
+        void initialize_encoder();
 };
+
+double BalanceRobotControl::encoder_count_R;
+double BalanceRobotControl::encoder_count_L;
