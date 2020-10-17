@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "/opt/ros/melodic/include/**",
-                "/home/koki/obonai_ws/devel/**",
+                "/home/koki/obonai_ws/devel_isolated/**",
+                "/home/koki/catkin_ws/devel_isolated/**",
                 "/usr/include/**"
             ],
             "defines": [],

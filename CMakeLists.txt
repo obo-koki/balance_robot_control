@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   sensor_msgs
+  nav_msgs
   tf
 )
 
@@ -17,18 +18,27 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-#IMU driver node
+#IMU driver
 add_executable(mpu6050 src/mpu6050.cpp)
 target_link_libraries(mpu6050
   ${catkin_LIBRARIES}
   wiringPi
 )
 
-#add_executable(balance_robot_control src/balance_robot_control.cpp)
-#target_link_libraries(balance_robot_control
-  #${catkin_LIBRARIES}
-  #wiringPi
-#)
+#Encoder
+add_executable(encoder src/encoder_counter.cpp)
+target_link_libraries(encoder
+  ${catkin_LIBRARIES}
+  wiringPi
+)
+
+#Motor Control
+add_executable(balance_robot_control src/balance_robot_control.cpp)
+target_link_libraries(balance_robot_control
+  ${catkin_LIBRARIES}
+  wiringPi
+  pigpiod_if2
+)
 #add_executable(balance_robot_control src/balance_robot_control.cpp)
 #target_link_libraries(balance_robot_control
   #${catkin_LIBRARIES}

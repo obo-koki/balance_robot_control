@@ -1,0 +1,33 @@
+<!-- ComplementaryFilter launch file -->
+<launch>
+
+  #### Robot Controller
+  <node pkg="balance_robot_control" type="balance_robot_control" name="balance_robot_control" 
+    output="screen">
+  </node>
+
+  #### IMU Driver
+
+  <node pkg="balance_robot_control" type="mpu6050" name="mpu6050" 
+    output="screen">
+    <remap from="/imu" to="/imu/data_raw"/>
+  </node>
+
+  #### Complementary filter
+
+  <node pkg="imu_complementary_filter" type="complementary_filter_node"
+      name="complementary_filter_gain_node" output="screen">
+    <param name="do_bias_estimation" value="true"/>
+    <param name="do_adaptive_gain" value="true"/>
+    <param name="use_mag" value="false"/>
+    <param name="gain_acc" value="0.01"/>
+    <param name="gain_mag" value="0.01"/>
+  </node>
+
+  #### Rviz
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find balance_robot_control)/launch/display.rviz"/>
+
+  #### tf static transformer
+  <node pkg="tf" type="static_transform_publisher" name="map_to_odom" args="0 0 0 0 0 0 map odom 10"/>
+
+</launch>
