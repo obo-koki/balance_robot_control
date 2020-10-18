@@ -20,6 +20,6 @@
   </node>
 
   #### Rviz
-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find balance_robot_control)/launch/imu_display.rviz"/>
+  <!--node pkg="rviz" type="rviz" name="rviz" args="-d $(find balance_robot_control)/launch/imu_display.rviz"/-->
 
 </launch>

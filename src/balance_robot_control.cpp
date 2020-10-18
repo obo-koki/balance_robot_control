@@ -14,7 +14,7 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh){
     //GPIO setup -> Encoder
     pi = pigpio_start(0,0);
     if ( pi < 0 ){
-        ROS_ERROR("pigpio Initialize Error (forget $sudo pigpio?)\n");
+        ROS_ERROR("pigpio Initialize Error (forget $sudo pigpiod?)\n");
         exit(1);
     }
 

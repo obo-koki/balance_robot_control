@@ -4,19 +4,32 @@
 # Requirement
 
 # Installation
-imu
+IMU
 
-lidar
+Lidar
 
 # Usage
-imu(mpu6050)情報の表示
+
+ロボットコントローラーの立ち上げ
+```
+roslaunch balance_robot_control balance_robot_control.launch
+```
+IMU(mpu6050) 立ち上げ
 ```
 // c++
 roslaunch balance_robot_control publish_imu_filtered_cpp.launch
 // python
-roslaunch balance_robot_control publish imu_filtered_py.launch
+roslaunch balance_robot_control publish_imu_filtered_py.launch
 ```
-ロボットコントローラーの立ち上げ + ロボット情報の表示
+Lidar 立ち上げ
 ```
-roslaunch balance_robot_control balance_robot_control.launch
+roslaunch balance_robot_control publish_lidar.launch
+```
+表示用 rviz 立ち上げ
+```
+roslaunch balance_robot_control display.launch
+```
+全部（IMU Lidar ロボットコントローラー）立ち上げ + 表示
+```
+roslaunch balance_robot_control all_display.launch
 ```
