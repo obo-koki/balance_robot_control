@@ -32,7 +32,7 @@ roslaunch balance_robot_control publish_lidar.launch
 ```
 roslaunch balance_robot_control display.launch
 ```
-全部（IMU Lidar ロボットコントローラー）立ち上げ + 表示用 rviz
+全部（ロボットコントローラー、IMU、Lidar）+ 表示用 rviz 立ち上げ
 ```
 roslaunch balance_robot_control all_display.launch
 ```
