@@ -99,11 +99,10 @@ int main(int argc, char **argv) {
 
     // Pub & Broadcast, sleep.
     pub.publish(imu);
-    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "mpu6050", "map"));
+    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map","mpu6050"));
     ros::spinOnce();
     //rate.sleep();
   }
   return 0;
 }
 
-// submodule test

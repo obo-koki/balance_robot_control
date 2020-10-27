@@ -1,0 +1,24 @@
+<!-- MadgwickFilter launch file -->
+<launch>
+
+  #### IMU Driver ###########################################################
+
+  <node pkg="balance_robot_control" type="mpu6050.py" name="mpu6050" 
+    output="screen">
+    <remap from="/mpu6050" to="/imu/data_raw"/>
+  </node>
+
+  #### madgwick filter
+  #### 安定動作確認できず
+
+  <node pkg="imu_filter_madgwick" type="imu_filter_node"
+      name="imu_filter_madgwick" output="screen">
+      <param name="use_mag" value="false"/>
+      <param name="world_frame" value="ned"/>
+      <param name="fixed_frame" value="map"/>
+  </node>
+
+  #### Rviz
+  <!--node pkg="rviz" type="rviz" name="rviz" args="-d $(find balance_robot_control)/launch/imu_display.rviz"/-->
+
+</launch>
