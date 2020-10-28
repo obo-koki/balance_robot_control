@@ -8,6 +8,8 @@
 #include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
+#include <iostream>
+#include <mutex>
 //#include "imu.h"
 
 //Encoder
@@ -38,7 +40,7 @@
 
 //Odometry
 #define WHEEL_DIA 0.066 //[m]
-#define WHEEL_DIST 0.160 //[m]
+#define WHEEL_DIST 0.180 //[m]
 
 //PID Gain
 #define KP_R 2.0
@@ -84,6 +86,11 @@ class BalanceRobotControl{
         float odom_y; //[m]
         float odom_th; //[rad]
 
+        // Timer callback debug
+        ros::WallTime pre_time;
+        ros::WallTime time; 
+        std::mutex m;
+
         //Interrupt function -> pigpio
         static void encoder_count_R_A(int, unsigned int, unsigned int, unsigned int);
         static void encoder_count_R_B(int, unsigned int, unsigned int, unsigned int);
@@ -96,9 +103,6 @@ class BalanceRobotControl{
         static void encoder_count_L_A();
         static void encoder_count_L_B();
 
-        float calc_angle_output(int);
-        void calc_odom();
-
         //ros
         ros::NodeHandle node_handle_;
         nav_msgs::Odometry odom_;
@@ -107,14 +111,16 @@ class BalanceRobotControl{
         void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr&);
         ros::Subscriber imu_sub_;
         void imu_callback(const sensor_msgs::Imu::ConstPtr&);
-        ros::WallTimer walltimer_;
+        ros::WallTimer process_timer_;
         //ros::Publisher imu_pub_;
         //tf::TransformBroadcaster odom_broadcaster;
         void timer_callback(const ros::WallTimerEvent&);
 
         //Other
         BalanceRobotControl(ros::NodeHandle);
-        void stop();
+        float calc_angle_output(int);
+        void calc_odom();
+        void motor_stop();
         void motor_control();
         void main_loop();
 };
