@@ -7,14 +7,13 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh){
     odom_pub_ = nh.advertise<nav_msgs::Odometry>("/odom",1000);
     vel_sub_ = nh.subscribe("/cmd_vel", 10, &BalanceRobotControl::cmd_vel_callback, this);
     imu_sub_ = nh.subscribe("/imu/data", 10, &BalanceRobotControl::imu_callback, this);
-    walltimer_ = nh.createWallTimer(ros::WallDuration(PROCESS_PERIOD),&BalanceRobotControl::timer_callback,this);
-
+    process_timer_ = nh.createWallTimer(ros::WallDuration(PROCESS_PERIOD),&BalanceRobotControl::timer_callback,this);
 
     // pigpio
     //GPIO setup -> Encoder
     pi = pigpio_start(0,0);
     if ( pi < 0 ){
-        ROS_ERROR("pigpio Initialize Error (forget $sudo pigpiod?)\n");
+        ROS_ERROR("pigpio Initialize Error (Forgot $sudo pigpiod?)\n");
         exit(1);
     }
 
@@ -106,6 +105,9 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh){
     odom_x = 0.0; //[m]
     odom_y = 0.0; //[m]
     odom_th = 0.0; //[rad]
+
+    //Timer callback debug
+    pre_time = ros::WallTime::now();
 }
 
 void BalanceRobotControl::encoder_count_R_A(){
@@ -169,16 +171,18 @@ void BalanceRobotControl::encoder_count_L_B(int, unsigned int, unsigned int, uns
 }
 
 void BalanceRobotControl::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
+    std::lock_guard<std::mutex> lock(m);
     target_vel_R = vel->linear.x + vel->angular.z * WHEEL_DIST;
     target_vel_L = vel->linear.x - vel->angular.z * WHEEL_DIST;
 }
 
 void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
+    std::lock_guard<std::mutex> lock(m);
     //robot pose contorol
 }
 
 float BalanceRobotControl::calc_angle_output(int _count){
-    int count_temp = 360.0 / (count_turn_out) * (_count % (count_turn_out));
+    float count_temp = 360.0 / (count_turn_out) * (_count % (count_turn_out));
     if (count_temp >= 0)
         return count_temp;
     else
@@ -206,21 +210,27 @@ void BalanceRobotControl::calc_odom(){
 }
 
 void BalanceRobotControl::timer_callback(const ros::WallTimerEvent &e){
+    std::lock_guard<std::mutex> lock(m);
+    //Timer debug
+    //time = ros::WallTime::now();
+    //ros::WallDuration time_diff = time - pre_time;
+    //ROS_INFO("Timer Callback time : %u.%09u", time_diff.sec, time_diff.nsec);
+    //pre_time = time;
     //Motor R
     angle_out_R = calc_angle_output(count_R);
-    angle_vel_R = 360 * (count_R - count_R_pre) / count_turn_out / PROCESS_PERIOD;
+    angle_vel_R = -1.0*(360.0 * (count_R - count_R_pre) / count_turn_out / PROCESS_PERIOD);
     count_R_pre = count_R;
     //Motor L
     angle_out_L = calc_angle_output(count_L);
-    angle_vel_L = 360 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD;
+    angle_vel_L = 360.0 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD;
     count_L_pre = count_L;
     //Calculate vel
-    vel_R = WHEEL_DIA / 2 * (angle_vel_R / 360 *PI);
-    vel_L = WHEEL_DIA / 2 * (angle_vel_L / 360 *PI);
+    vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
+    vel_L = WHEEL_DIA / 2.0 * (angle_vel_L / 360.0 *PI);
     calc_odom();
 }
 
-void BalanceRobotControl::stop(){
+void BalanceRobotControl::motor_stop(){
     gpio_write(pi, MOTOR_DRIVER_EN, PI_HIGH);
     printf("Force motor stop\n");
     exit(1);
@@ -233,10 +243,6 @@ void BalanceRobotControl::motor_control(){
     pwm_R = pwm_R +KP_R*(target_vel_R - vel_R);
     pwm_L = pwm_L +KP_L*(target_vel_L - vel_L);
 
-    printf("target_vel_R:%3.1f, target_vel_L:%3.1f\n", target_vel_R, target_vel_L);
-    printf("vel_R:%3.1f, vel_L:%3.1f\n", vel_R, vel_L);
-    printf("pwm_R:%3.1f, pwm_L:%3.1f\n",pwm_R, pwm_L);
-
     // Decide dir by pwm code
     dir_R = (pwm_R >=0) ? PI_HIGH : PI_LOW;
     dir_L = (pwm_L >=0) ? PI_HIGH : PI_LOW;
@@ -247,25 +253,28 @@ void BalanceRobotControl::motor_control(){
 
     gpio_write(pi, MOTOR_DIR_L, dir_L);
     set_PWM_dutycycle(pi, MOTOR_PWM_L, abs(pwm_L));
+
 }
 
 void BalanceRobotControl::main_loop(){
     //Motor start
     gpio_write(pi, MOTOR_DRIVER_EN, PI_LOW);
-    ros::Rate rate(5);
 
-    while (ros::ok())
-    {
-        printf("Motor_R:count %i,angle_out %3.1f,speed %3.1f \n", count_R, angle_out_R, angle_vel_R);
-        printf("Motor_L:count %i,angle_out %3.1f,speed %3.1f \n\n", count_L, angle_out_L, angle_vel_L);
+    ros::AsyncSpinner spinner(1);
+    spinner.start();
+    ros::Rate rate(5);
+    while (ros::ok()){
+        printf("【Motor_R】count:%i,angle_out:%3.2f,angle_vel_R:%3.2f,target_vel_R:%3.2f,vel_R:%3.2f,pwm_R:%3.2f\n", 
+        count_R, angle_out_R, angle_vel_R,target_vel_R,vel_R,pwm_R);
+        printf("【Motor_L】count:%i,angle_out:%3.2f,angle_vel_L:%3.2f,target_vel_L:%3.2f,vel_L:%3.2f,pwm_L:%3.2f\n\n",
+        count_L, angle_out_L, angle_vel_L,target_vel_L,vel_L,pwm_L);
 
         motor_control();
-
         odom_pub_.publish(odom_);
-
-        ros::spinOnce();
         rate.sleep();
     }
+    motor_stop();
+    spinner.stop();
 }
 
 int main(int argc, char** argv) {
@@ -273,4 +282,5 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     BalanceRobotControl control(nh);
     control.main_loop();
+    return 0;
 }
