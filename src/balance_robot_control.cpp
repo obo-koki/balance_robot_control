@@ -257,11 +257,11 @@ void BalanceRobotControl::timer_callback(const ros::WallTimerEvent &e){
     //pre_time = time;
     //Motor R
     angle_out_R = calc_angle_output(count_R);
-    angle_vel_R = -1.0*(360.0 * (count_R - count_R_pre) / count_turn_out / PROCESS_PERIOD);
+    angle_vel_R = (360.0 * (count_R - count_R_pre) / count_turn_out / PROCESS_PERIOD);
     count_R_pre = count_R;
     //Motor L
     angle_out_L = calc_angle_output(count_L);
-    angle_vel_L = 360.0 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD;
+    angle_vel_L = -1.0*(360.0 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD);
     count_L_pre = count_L;
     //Calculate vel
     vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
