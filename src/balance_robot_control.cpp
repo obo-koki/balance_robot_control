@@ -105,6 +105,17 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh){
     odom_x = 0.0; //[m]
     odom_y = 0.0; //[m]
     odom_th = 0.0; //[rad]
+    
+    //Initialize PID
+    diff_R = 0.0;
+    diff_pre_R = 0.0;
+    integral_R = 0.0;
+    differential_R = 0.0;
+
+    diff_L = 0.0;
+    diff_pre_L = 0.0;
+    integral_L = 0.0;
+    differential_L = 0.0;
 
     //Timer callback debug
     pre_time = ros::WallTime::now();
@@ -228,6 +239,7 @@ void BalanceRobotControl::timer_callback(const ros::WallTimerEvent &e){
     vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
     vel_L = WHEEL_DIA / 2.0 * (angle_vel_L / 360.0 *PI);
     calc_odom();
+    motor_control();
 }
 
 void BalanceRobotControl::motor_stop(){
@@ -240,8 +252,19 @@ void BalanceRobotControl::motor_control(){
     bool dir_R, dir_L;
 
     // PID
-    pwm_R = pwm_R +KP_R*(target_vel_R - vel_R);
-    pwm_L = pwm_L +KP_L*(target_vel_L - vel_L);
+    diff_R = target_vel_R - vel_R;
+    integral_R += (diff_R + diff_pre_R)/2.0*PROCESS_PERIOD;
+    differential_R = (diff_R - diff_pre_R)/PROCESS_PERIOD;
+
+    pwm_R = KP_R*diff_R + KI_R*integral_R + KD_R*differential_R;
+    pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
+
+    diff_L = target_vel_L - vel_L;
+    integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
+    differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
+
+    pwm_L = KP_R*diff_L + KI_R*integral_L + KD_R*differential_L;
+    pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
 
     // Decide dir by pwm code
     dir_R = (pwm_R >=0) ? PI_HIGH : PI_LOW;
@@ -269,7 +292,6 @@ void BalanceRobotControl::main_loop(){
         printf("【Motor_L】count:%i,angle_out:%3.2f,angle_vel_L:%3.2f,target_vel_L:%3.2f,vel_L:%3.2f,pwm_L:%3.2f\n\n",
         count_L, angle_out_L, angle_vel_L,target_vel_L,vel_L,pwm_L);
 
-        motor_control();
         odom_pub_.publish(odom_);
         rate.sleep();
     }

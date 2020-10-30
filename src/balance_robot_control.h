@@ -75,16 +75,23 @@ class BalanceRobotControl{
         // Wheel velocity
         float vel_R; //[m/s]
         float target_vel_R; //[m/s]
-        float pwm_R; // 0 ~ PWM_RANGE
+        int pwm_R; // 0 ~ PWM_RANGE
 
         float vel_L; //[m/s]
         float target_vel_L; //[m/s]
-        float pwm_L; // 0 ~ PWM_RANGE
+        int pwm_L; // 0 ~ PWM_RANGE
 
         // Odometry
         float odom_x; //[m]
         float odom_y; //[m]
         float odom_th; //[rad]
+
+        // PID
+        float diff_R, diff_pre_R;
+        float integral_R, differential_R;
+
+        float diff_L, diff_pre_L;
+        float integral_L, differential_L;
 
         // Timer callback debug
         ros::WallTime pre_time;
