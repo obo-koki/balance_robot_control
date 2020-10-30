@@ -4,16 +4,22 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh){
 
     //ROS
     node_handle_ = nh;
-    odom_pub_ = nh.advertise<nav_msgs::Odometry>("/odom",1000);
+    odom_pub_ = nh.advertise<nav_msgs::Odometry>("/odom",5);
     vel_sub_ = nh.subscribe("/cmd_vel", 10, &BalanceRobotControl::cmd_vel_callback, this);
     imu_sub_ = nh.subscribe("/imu/data", 10, &BalanceRobotControl::imu_callback, this);
     process_timer_ = nh.createWallTimer(ros::WallDuration(PROCESS_PERIOD),&BalanceRobotControl::timer_callback,this);
+
+    // For PID debug
+    vel_pub_R_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_R",5);
+    vel_pub_L_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_L",5);
+    PID_sub_R_ = nh.subscribe("/PID_R",10,&BalanceRobotControl::PID_R_callback,this);
+    PID_sub_L_ = nh.subscribe("/PID_L",10,&BalanceRobotControl::PID_L_callback,this);
 
     // pigpio
     //GPIO setup -> Encoder
     pi = pigpio_start(0,0);
     if ( pi < 0 ){
-        ROS_ERROR("pigpio Initialize Error (Forgot $sudo pigpiod?)\n");
+        ROS_ERROR("pigpio Initialize Error (Forget $sudo pigpiod?)\n");
         exit(1);
     }
 
@@ -192,6 +198,28 @@ void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
     //robot pose contorol
 }
 
+void BalanceRobotControl::PID_R_callback(const std_msgs::Float32MultiArray &msg){
+    int num = msg.data.size();
+    if (num !=3){
+        ROS_INFO("Wrong array size /PID_R");
+        return;
+    } 
+    KP_R = msg.data[0];
+    KI_R = msg.data[1];
+    KD_R = msg.data[2];
+}
+
+void BalanceRobotControl::PID_L_callback(const std_msgs::Float32MultiArray &msg){
+    int num = msg.data.size();
+    if (num !=3){
+        ROS_INFO("Wrong array size /PID_L");
+        return;
+    } 
+    KP_L = msg.data[0];
+    KI_L = msg.data[1];
+    KD_L = msg.data[2];
+}
+
 float BalanceRobotControl::calc_angle_output(int _count){
     float count_temp = 360.0 / (count_turn_out) * (_count % (count_turn_out));
     if (count_temp >= 0)
@@ -238,6 +266,13 @@ void BalanceRobotControl::timer_callback(const ros::WallTimerEvent &e){
     //Calculate vel
     vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
     vel_L = WHEEL_DIA / 2.0 * (angle_vel_L / 360.0 *PI);
+    //For PID debug
+    geometry_msgs::Twist motor_vel_R, motor_vel_L;
+    motor_vel_R.linear.x = vel_R;
+    motor_vel_L.linear.x = vel_L;
+    vel_pub_R_.publish(motor_vel_R);
+    vel_pub_L_.publish(motor_vel_L);
+
     calc_odom();
     motor_control();
 }
@@ -263,7 +298,7 @@ void BalanceRobotControl::motor_control(){
     integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
     differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
 
-    pwm_L = KP_R*diff_L + KI_R*integral_L + KD_R*differential_L;
+    pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
     pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
 
     // Decide dir by pwm code
@@ -291,7 +326,6 @@ void BalanceRobotControl::main_loop(){
         count_R, angle_out_R, angle_vel_R,target_vel_R,vel_R,pwm_R);
         printf("【Motor_L】count:%i,angle_out:%3.2f,angle_vel_L:%3.2f,target_vel_L:%3.2f,vel_L:%3.2f,pwm_L:%3.2f\n\n",
         count_L, angle_out_L, angle_vel_L,target_vel_L,vel_L,pwm_L);
-
         odom_pub_.publish(odom_);
         rate.sleep();
     }

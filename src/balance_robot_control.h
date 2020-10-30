@@ -3,6 +3,7 @@
 #include <pigpiod_if2.h>
 #include <stdio.h>
 #include <chrono>
+#include <std_msgs/Float32MultiArray.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Pose.h>
 #include <sensor_msgs/Imu.h>
@@ -43,6 +44,7 @@
 #define WHEEL_DIST 0.180 //[m]
 
 //PID Gain
+/*
 #define KP_R 2.0
 #define KI_R 1.0
 #define KD_R 1.0
@@ -50,6 +52,7 @@
 #define KP_L 2.0
 #define KI_L 1.0
 #define KD_L 1.0
+*/
 
 //Others
 #define PI 3.1415926535
@@ -87,6 +90,14 @@ class BalanceRobotControl{
         float odom_th; //[rad]
 
         // PID
+        float KP_R = 2.0;
+        float KI_R = 1.0;
+        float KD_R = 1.0;
+
+        float KP_L = 2.0;
+        float KI_L = 1.0;
+        float KD_L = 1.0;
+
         float diff_R, diff_pre_R;
         float integral_R, differential_R;
 
@@ -114,6 +125,12 @@ class BalanceRobotControl{
         ros::NodeHandle node_handle_;
         nav_msgs::Odometry odom_;
         ros::Publisher odom_pub_;
+        ros::Publisher vel_pub_R_; // for PID debug
+        ros::Publisher vel_pub_L_; // for PID debug
+        ros::Subscriber PID_sub_R_; // for PID debug
+        void PID_R_callback(const std_msgs::Float32MultiArray&);
+        ros::Subscriber PID_sub_L_; // for PID debug
+        void PID_L_callback(const std_msgs::Float32MultiArray&);
         ros::Subscriber vel_sub_;
         void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr&);
         ros::Subscriber imu_sub_;
