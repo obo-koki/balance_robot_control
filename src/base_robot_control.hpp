@@ -57,8 +57,8 @@
 //Others
 #define PI 3.1415926535
 
-class BalanceRobotControl{
-    public:
+class BaseRobotControl{
+    protected:
         //Encoder
         static int pi;
         const int count_turn_en = 4 * PULSE_NUM;
@@ -125,30 +125,29 @@ class BalanceRobotControl{
         ros::NodeHandle node_handle_;
         nav_msgs::Odometry odom_;
         ros::Publisher odom_pub_;
+
         ros::Publisher vel_pub_R_; // for PID debug
         ros::Publisher vel_pub_L_; // for PID debug
         ros::Subscriber PID_sub_R_; // for PID debug
         void PID_R_callback(const std_msgs::Float32MultiArray&);
         ros::Subscriber PID_sub_L_; // for PID debug
         void PID_L_callback(const std_msgs::Float32MultiArray&);
+
         ros::Subscriber vel_sub_;
-        void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr&);
+        virtual void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr&);
         ros::Subscriber imu_sub_;
-        void imu_callback(const sensor_msgs::Imu::ConstPtr&);
+        virtual void imu_callback(const sensor_msgs::Imu::ConstPtr&);
         ros::WallTimer process_timer_;
         //ros::Publisher imu_pub_;
         //tf::TransformBroadcaster odom_broadcaster;
-        void timer_callback(const ros::WallTimerEvent&);
+        virtual void timer_callback(const ros::WallTimerEvent&);
 
         //Other
-        BalanceRobotControl(ros::NodeHandle);
         float calc_angle_output(int);
-        void calc_odom();
-        void motor_stop();
-        void motor_control();
+        virtual void calc_odom();
+        virtual void motor_control();
+    public:
+        BaseRobotControl(ros::NodeHandle);
+        virtual void motor_stop();
         void main_loop();
 };
-
-int BalanceRobotControl::pi;
-int BalanceRobotControl::count_R;
-int BalanceRobotControl::count_L;
