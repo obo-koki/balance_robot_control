@@ -39,8 +39,9 @@ target_link_libraries(balance_robot_control
   wiringPi
   pigpiod_if2
 )
-#add_executable(balance_robot_control src/balance_robot_control.cpp)
-#target_link_libraries(balance_robot_control
-  #${catkin_LIBRARIES}
-  #wiringPi
-#)
+add_executable(balance_robot_control_tb src/balance_robot_control_tb6612.cpp)
+target_link_libraries(balance_robot_control_tb
+  ${catkin_LIBRARIES}
+  wiringPi
+  pigpiod_if2
+)

@@ -10,6 +10,8 @@
 
 class TB6612 {
  private:
+  
+ public:
   int pi_; // pigpio
   // Motor A
   int pin_ain1_;
@@ -19,10 +21,10 @@ class TB6612 {
   int pin_bin1_;
   int pin_bin2_;
   int pin_bpwm_;
- public:
+
   static const bool A = 0;
   static const bool B = 1;
-
+  TB6612(){}
   TB6612(int pi,
          int pin_ain1,
          int pin_ain2,
@@ -46,6 +48,39 @@ class TB6612 {
     set_mode(pi_, pin_bin2_, PI_OUTPUT);
     set_mode(pi_, pin_bpwm_, PI_OUTPUT);
 
+  }
+
+
+  // Set Pin mode
+  void setPinMode(int pi,
+         int pin_ain1,
+         int pin_ain2,
+         int pin_apwm,
+         int pin_bin1,
+         int pin_bin2,
+         int pin_bpwm)
+  {
+    TB6612::pin_ain1_ = 2;
+    //ROS_INFO("pi %d", pi_);
+    //ROS_INFO("ain %d",pin_ain1_);
+    
+    pi_                 = pi;
+    pin_ain1_           = pin_ain1;
+    pin_ain2_           = pin_ain2;
+    pin_apwm_           = pin_apwm;
+    pin_bin1_           = pin_bin1;
+    pin_bin2_           = pin_bin2;
+    pin_bpwm_           = pin_bpwm;
+    
+    
+    set_mode(pi_, pin_ain1_, PI_OUTPUT);
+    set_mode(pi_, pin_ain2_, PI_OUTPUT);
+    set_mode(pi_, pin_apwm_, PI_OUTPUT);
+    set_mode(pi_, pin_bin1_, PI_OUTPUT);
+    set_mode(pi_, pin_bin2_, PI_OUTPUT);
+    set_mode(pi_, pin_bpwm_, PI_OUTPUT);
+    
+    ROS_INFO("Set TB6612 Pin mode");
   }
 
   /**
