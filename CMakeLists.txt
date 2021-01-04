@@ -33,12 +33,20 @@ target_link_libraries(encoder
 )
 
 #Motor Control
-add_executable(balance_robot_control src/balance_robot_control.cpp)
+add_executable(balance_robot_control 
+  src/control_main.cpp
+  src/balance_robot_control.hpp
+  src/balance_robot_control.cpp
+  src/base_robot_control.hpp
+  src/base_robot_control.cpp
+)
+
 target_link_libraries(balance_robot_control
   ${catkin_LIBRARIES}
   wiringPi
   pigpiod_if2
 )
+
 add_executable(balance_robot_control_tb src/balance_robot_control_tb6612.cpp)
 target_link_libraries(balance_robot_control_tb
   ${catkin_LIBRARIES}
