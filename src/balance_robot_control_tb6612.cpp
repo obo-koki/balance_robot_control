@@ -195,7 +195,7 @@ void BalanceRobotControl::encoder_count_L_B(int, unsigned int, unsigned int, uns
 
 void BalanceRobotControl::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
     std::lock_guard<std::mutex> lock(m);
-    target_vel_R = vel->linear.x + vel->angular.z * WHEEL_DIST;
+    target_vel_R = -(vel->linear.x + vel->angular.z * WHEEL_DIST);
     target_vel_L = vel->linear.x - vel->angular.z * WHEEL_DIST;
 }
 
