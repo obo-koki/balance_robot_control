@@ -1,8 +1,14 @@
-#include "base_robot_control.hpp"
+#ifndef BALANCE_ROBOT_CONTROL_HPP
+#define BALANCE_ROBOT_CONTROL_HPP
 
-class BalanceRobotControl: public BaseRobotControl
+//#include "base_robot_control.hpp"
+#include "base_robot_control_tb.hpp"
+
+class BalanceRobotControl: public BaseRobotControl_TB
 {
     public:
         //Other
         BalanceRobotControl(ros::NodeHandle);
 };
+
+#endif

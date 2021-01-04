@@ -1,5 +1,5 @@
-#ifndef TB6612_H
-#define TB6612_H
+#ifndef TB6612_HPP
+#define TB6612_HPP
 
 // Copy from https://github.com/botamochi6277/tamiya_cam_robot.git
 

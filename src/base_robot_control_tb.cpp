@@ -1,7 +1,11 @@
-#include "balance_robot_control_tb6612.h"
+#include "base_robot_control_tb.hpp"
 #include "tb6612.hpp"
 
-BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh){
+int BaseRobotControl_TB::pi;
+int BaseRobotControl_TB::count_R;
+int BaseRobotControl_TB::count_L;
+
+BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
 
     // pigpio
     pi = pigpio_start(0,0);
@@ -20,15 +24,15 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh){
     //ROS
     node_handle_ = nh;
     odom_pub_ = nh.advertise<nav_msgs::Odometry>("/odom",5);
-    vel_sub_ = nh.subscribe("/cmd_vel", 10, &BalanceRobotControl::cmd_vel_callback, this);
-    imu_sub_ = nh.subscribe("/imu/data", 10, &BalanceRobotControl::imu_callback, this);
-    process_timer_ = nh.createWallTimer(ros::WallDuration(PROCESS_PERIOD),&BalanceRobotControl::timer_callback,this);
+    vel_sub_ = nh.subscribe("/cmd_vel", 10, &BaseRobotControl_TB::cmd_vel_callback, this);
+    imu_sub_ = nh.subscribe("/imu/data", 10, &BaseRobotControl_TB::imu_callback, this);
+    process_timer_ = nh.createWallTimer(ros::WallDuration(PROCESS_PERIOD),&BaseRobotControl_TB::timer_callback,this);
 
     // For PID debug
     vel_pub_R_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_R",5);
     vel_pub_L_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_L",5);
-    PID_sub_R_ = nh.subscribe("/PID_R",10,&BalanceRobotControl::PID_R_callback,this);
-    PID_sub_L_ = nh.subscribe("/PID_L",10,&BalanceRobotControl::PID_L_callback,this);
+    PID_sub_R_ = nh.subscribe("/PID_R",10,&BaseRobotControl_TB::PID_R_callback,this);
+    PID_sub_L_ = nh.subscribe("/PID_L",10,&BaseRobotControl_TB::PID_L_callback,this);
 
     driver = new TB6612();
     //GPIO setup -> Encoder
@@ -133,14 +137,14 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh){
     ROS_INFO("Initialized");
 }
 
-void BalanceRobotControl::encoder_count_R_A(){
+void BaseRobotControl_TB::encoder_count_R_A(){
     if (digitalRead(EN_R_A) == digitalRead(EN_R_B)){
         count_R --;
     }else{
         count_R ++;
     }
 }
-void BalanceRobotControl::encoder_count_R_A(int, unsigned int, unsigned int, unsigned int){
+void BaseRobotControl_TB::encoder_count_R_A(int, unsigned int, unsigned int, unsigned int){
     if (gpio_read(pi, EN_R_A) == gpio_read(pi, EN_R_B)){
         count_R --;
     }else{
@@ -148,14 +152,14 @@ void BalanceRobotControl::encoder_count_R_A(int, unsigned int, unsigned int, uns
     }
 }
 
-void BalanceRobotControl::encoder_count_R_B(){
+void BaseRobotControl_TB::encoder_count_R_B(){
     if (digitalRead(EN_R_A) != digitalRead(EN_R_B)){
         count_R --;
     }else{
         count_R ++;
     }
 }
-void BalanceRobotControl::encoder_count_R_B(int, unsigned int, unsigned int, unsigned int){
+void BaseRobotControl_TB::encoder_count_R_B(int, unsigned int, unsigned int, unsigned int){
     if (gpio_read(pi, EN_R_A) != gpio_read(pi, EN_R_B)){
         count_R --;
     }else{
@@ -163,14 +167,14 @@ void BalanceRobotControl::encoder_count_R_B(int, unsigned int, unsigned int, uns
     }
 }
 
-void BalanceRobotControl::encoder_count_L_A(){
+void BaseRobotControl_TB::encoder_count_L_A(){
     if (digitalRead(EN_L_A) == digitalRead(EN_L_B)){
         count_L --;
     }else{
         count_L ++;
     }
 }
-void BalanceRobotControl::encoder_count_L_A(int, unsigned int, unsigned int, unsigned int){
+void BaseRobotControl_TB::encoder_count_L_A(int, unsigned int, unsigned int, unsigned int){
     if (gpio_read(pi, EN_L_A) == gpio_read(pi, EN_L_B)){
         count_L --;
     }else{
@@ -178,14 +182,14 @@ void BalanceRobotControl::encoder_count_L_A(int, unsigned int, unsigned int, uns
     }
 }
 
-void BalanceRobotControl::encoder_count_L_B(){
+void BaseRobotControl_TB::encoder_count_L_B(){
     if (digitalRead(EN_L_A) != digitalRead(EN_L_B)){
         count_L --;
     }else{
         count_L ++;
     }
 }
-void BalanceRobotControl::encoder_count_L_B(int, unsigned int, unsigned int, unsigned int){
+void BaseRobotControl_TB::encoder_count_L_B(int, unsigned int, unsigned int, unsigned int){
     if (gpio_read(pi, EN_L_A) != gpio_read(pi, EN_L_B)){
         count_L --;
     }else{
@@ -193,18 +197,18 @@ void BalanceRobotControl::encoder_count_L_B(int, unsigned int, unsigned int, uns
     }
 }
 
-void BalanceRobotControl::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
+void BaseRobotControl_TB::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
     std::lock_guard<std::mutex> lock(m);
     target_vel_R = -(vel->linear.x + vel->angular.z * WHEEL_DIST);
     target_vel_L = vel->linear.x - vel->angular.z * WHEEL_DIST;
 }
 
-void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
+void BaseRobotControl_TB::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
     std::lock_guard<std::mutex> lock(m);
     //robot pose contorol
 }
 
-void BalanceRobotControl::PID_R_callback(const std_msgs::Float32MultiArray &msg){
+void BaseRobotControl_TB::PID_R_callback(const std_msgs::Float32MultiArray &msg){
     int num = msg.data.size();
     if (num !=3){
         ROS_INFO("Wrong array size /PID_R");
@@ -215,7 +219,7 @@ void BalanceRobotControl::PID_R_callback(const std_msgs::Float32MultiArray &msg)
     KD_R = msg.data[2];
 }
 
-void BalanceRobotControl::PID_L_callback(const std_msgs::Float32MultiArray &msg){
+void BaseRobotControl_TB::PID_L_callback(const std_msgs::Float32MultiArray &msg){
     int num = msg.data.size();
     if (num !=3){
         ROS_INFO("Wrong array size /PID_L");
@@ -226,7 +230,7 @@ void BalanceRobotControl::PID_L_callback(const std_msgs::Float32MultiArray &msg)
     KD_L = msg.data[2];
 }
 
-float BalanceRobotControl::calc_angle_output(int _count){
+float BaseRobotControl_TB::calc_angle_output(int _count){
     float count_temp = 360.0 / (count_turn_out) * (_count % (count_turn_out));
     if (count_temp >= 0)
         return count_temp;
@@ -234,7 +238,7 @@ float BalanceRobotControl::calc_angle_output(int _count){
         return count_temp + 360.0;
 }
 
-void BalanceRobotControl::calc_odom(){
+void BaseRobotControl_TB::calc_odom(){
     float v_x, v_y, v_th; // m/s, m/s, rad/s
 
     // use differential two-wheeled robot equation
@@ -254,7 +258,7 @@ void BalanceRobotControl::calc_odom(){
     odom_.pose.pose.orientation = odom_q;
 }
 
-void BalanceRobotControl::timer_callback(const ros::WallTimerEvent &e){
+void BaseRobotControl_TB::timer_callback(const ros::WallTimerEvent &e){
     std::lock_guard<std::mutex> lock(m);
     //Timer debug
     //time = ros::WallTime::now();
@@ -283,14 +287,14 @@ void BalanceRobotControl::timer_callback(const ros::WallTimerEvent &e){
     motor_control();
 }
 
-void BalanceRobotControl::motor_stop(){
+void BaseRobotControl_TB::motor_stop(){
     driver->drive(driver->A, 0);
     driver->drive(driver->B, 0);
     printf("Force motor stop\n");
     exit(1);
 }
 
-void BalanceRobotControl::motor_control(){
+void BaseRobotControl_TB::motor_control(){
     //bool dir_R, dir_L;
 
     // PID
@@ -325,7 +329,7 @@ void BalanceRobotControl::motor_control(){
 
 }
 
-void BalanceRobotControl::main_loop(){
+void BaseRobotControl_TB::main_loop(){
     //Motor start
     //gpio_write(pi, MOTOR_DRIVER_EN, PI_LOW);
 
@@ -344,12 +348,4 @@ void BalanceRobotControl::main_loop(){
     }
     motor_stop();
     spinner.stop();
-}
-
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "balance_robot_control");
-    ros::NodeHandle nh;
-    BalanceRobotControl control(nh);
-    control.main_loop();
-    return 0;
 }
