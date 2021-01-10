@@ -108,11 +108,11 @@ BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
     angle_vel_L = 0.0; //[deg/s]
 
     //Initialize Wheel velocity
-    vel_R = 0.0; //[m/s]
+    vel_R = vel_R_pre = vel_R_fil = 0.0; //[m/s]
     target_vel_R = 0.0; //[m/s]
     pwm_R = 0.0; // 0 ~ PWM_RANGE
 
-    vel_L = 0.0; //[m/s]
+    vel_L = vel_L_pre = vel_L_fil = 0.0; //[m/s]
     target_vel_L = 0.0; //[m/s]
     pwm_L = 0.0; // 0 ~ PWM_RANGE
     
@@ -276,6 +276,10 @@ void BaseRobotControl_TB::timer_callback(const ros::WallTimerEvent &e){
     //Calculate vel
     vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
     vel_L = WHEEL_DIA / 2.0 * (angle_vel_L / 360.0 *PI);
+    vel_R = a_vel * vel_R + (1 - a_vel) * vel_R_pre;
+    vel_L = a_vel * vel_L + (1 - a_vel) * vel_L_pre;
+    vel_R_pre = vel_R;
+    vel_L_pre = vel_L;
     //For PID debug
     geometry_msgs::Twist motor_vel_R, motor_vel_L;
     motor_vel_R.linear.x = vel_R;
@@ -339,9 +343,9 @@ void BaseRobotControl_TB::main_loop(){
     ROS_INFO("Start Loop");
     while (ros::ok())
     {
-        printf("【Motor_R】count:%i,angle_out:%3.2f,angle_vel_R:%3.2f,target_vel_R:%3.2f,vel_R:%3.2f,pwm_R:%3.2f\n", 
+        printf("【Motor_R】count:%i,angle_out:%3.2f,angle_vel_R:%3.2f,target_vel_R:%3.2f,vel_R:%3.2f,pwm_R:%6.3f\n", 
         count_R, angle_out_R, angle_vel_R,target_vel_R,vel_R,pwm_R);
-        printf("【Motor_L】count:%i,angle_out:%3.2f,angle_vel_L:%3.2f,target_vel_L:%3.2f,vel_L:%3.2f,pwm_L:%3.2f\n\n",
+        printf("【Motor_L】count:%i,angle_out:%3.2f,angle_vel_L:%3.2f,target_vel_L:%3.2f,vel_L:%3.2f,pwm_L:%6.3f\n\n",
         count_L, angle_out_L, angle_vel_L,target_vel_L,vel_L,pwm_L);
         odom_pub_.publish(odom_);
         rate.sleep();

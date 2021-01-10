@@ -104,12 +104,20 @@ class BaseRobotControl_TB{
 
         // Wheel velocity
         float vel_R; //[m/s]
+        float vel_R_pre; //[m/s]
+        float vel_R_fil; //[m/s]
         float target_vel_R; //[m/s]
         int pwm_R; // 0 ~ PWM_RANGE
 
         float vel_L; //[m/s]
+        float vel_L_pre; //[m/s]
+        float vel_L_fil; //[m/s]
         float target_vel_L; //[m/s]
         int pwm_L; // 0 ~ PWM_RANGE
+
+        // Vel filter param
+        const float a_vel = 0.5;
+
 
         // Odometry
         float odom_x; //[m]
@@ -117,11 +125,11 @@ class BaseRobotControl_TB{
         float odom_th; //[rad]
 
         // PID
-        float KP_R = 2.0;
+        float KP_R = 3.0;
         float KI_R = 1.0;
         float KD_R = 1.0;
 
-        float KP_L = 2.0;
+        float KP_L = 3.0;
         float KI_L = 1.0;
         float KD_L = 1.0;
 
