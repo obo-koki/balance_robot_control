@@ -1,0 +1,7 @@
+# Velocity PID parameter
+KP_VEL_R: 10.0
+KI_VEL_R: 1.0
+KD_VEL_R: 0.0
+KP_VEL_L: 10.0
+KI_VEL_L: 1.0
+KD_VEL_L: 0.0

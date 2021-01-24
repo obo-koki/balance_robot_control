@@ -125,13 +125,13 @@ class BaseRobotControl_TB{
         float odom_th; //[rad]
 
         // PID
-        float KP_R = 3.0;
-        float KI_R = 1.0;
-        float KD_R = 1.0;
+        float KP_R;
+        float KI_R;
+        float KD_R;
 
-        float KP_L = 3.0;
-        float KI_L = 1.0;
-        float KD_L = 1.0;
+        float KP_L;
+        float KI_L;
+        float KD_L;
 
         float diff_R, diff_pre_R;
         float integral_R, differential_R;
@@ -162,6 +162,8 @@ class BaseRobotControl_TB{
         ros::Publisher odom_pub_;
         ros::Publisher vel_pub_R_; // for PID debug
         ros::Publisher vel_pub_L_; // for PID debug
+        ros::Publisher vel_ref_pub_R_; // for PID debug
+        ros::Publisher vel_ref_pub_L_; // for PID debug
         ros::Subscriber PID_sub_R_; // for PID debug
         void PID_R_callback(const std_msgs::Float32MultiArray&);
         ros::Subscriber PID_sub_L_; // for PID debug

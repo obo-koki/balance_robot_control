@@ -28,9 +28,25 @@ BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
     imu_sub_ = nh.subscribe("/imu/data", 10, &BaseRobotControl_TB::imu_callback, this);
     process_timer_ = nh.createWallTimer(ros::WallDuration(PROCESS_PERIOD),&BaseRobotControl_TB::timer_callback,this);
 
+    //set param
+    if(nh.hasParam("/KP_VEL_R"))
+        nh.getParam("/KP_VEL_R", KP_R);
+    if(nh.hasParam("/KI_VEL_R"))
+        nh.getParam("/KI_VEL_R", KI_R);
+    if(nh.hasParam("/KD_VEL_R"))
+        nh.getParam("/KD_VEL_R", KD_R);
+    if(nh.hasParam("/KP_VEL_L"))
+        nh.getParam("/KP_VEL_L", KP_L);
+    if(nh.hasParam("/KI_VEL_L"))
+        nh.getParam("/KI_VEL_L", KI_L);
+    if(nh.hasParam("/KD_VEL_L"))
+        nh.getParam("/KD_VEL_L", KD_L);
+
     // For PID debug
     vel_pub_R_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_R",5);
     vel_pub_L_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_L",5);
+    vel_ref_pub_R_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_ref_R",5);
+    vel_ref_pub_L_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_ref_L",5);
     PID_sub_R_ = nh.subscribe("/PID_R",10,&BaseRobotControl_TB::PID_R_callback,this);
     PID_sub_L_ = nh.subscribe("/PID_L",10,&BaseRobotControl_TB::PID_L_callback,this);
 
@@ -281,11 +297,15 @@ void BaseRobotControl_TB::timer_callback(const ros::WallTimerEvent &e){
     vel_R_pre = vel_R;
     vel_L_pre = vel_L;
     //For PID debug
-    geometry_msgs::Twist motor_vel_R, motor_vel_L;
+    geometry_msgs::Twist motor_vel_R, motor_vel_L,motor_vel_ref_R,motor_vel_ref_L;
     motor_vel_R.linear.x = vel_R;
     motor_vel_L.linear.x = vel_L;
+    motor_vel_ref_R.linear.x = target_vel_R;
+    motor_vel_ref_L.linear.x = target_vel_L;
     vel_pub_R_.publish(motor_vel_R);
     vel_pub_L_.publish(motor_vel_L);
+    vel_ref_pub_R_.publish(motor_vel_ref_R);
+    vel_ref_pub_L_.publish(motor_vel_ref_L);
 
     calc_odom();
     motor_control();
@@ -330,7 +350,6 @@ void BaseRobotControl_TB::motor_control(){
     */
     driver->drive(driver->A, pwm_L);
     driver->drive(driver->B, pwm_R);
-
 }
 
 void BaseRobotControl_TB::main_loop(){
@@ -343,9 +362,11 @@ void BaseRobotControl_TB::main_loop(){
     ROS_INFO("Start Loop");
     while (ros::ok())
     {
-        printf("【Motor_R】count:%i,angle_out:%3.2f,angle_vel_R:%3.2f,target_vel_R:%3.2f,vel_R:%3.2f,pwm_R:%6.3f\n", 
-        count_R, angle_out_R, angle_vel_R,target_vel_R,vel_R,pwm_R);
-        printf("【Motor_L】count:%i,angle_out:%3.2f,angle_vel_L:%3.2f,target_vel_L:%3.2f,vel_L:%3.2f,pwm_L:%6.3f\n\n",
+        printf("PID R P:%f, I:%f, D:%f\n", KP_R, KI_R, KD_R);
+        printf("PID L P:%f, I:%f, D:%f\n", KP_L, KI_L, KD_L);
+        printf("【Motor_R】count:%i,angle_out:%3.2f,angle_vel_R:%3.2f,target_vel_R:%3.2f,vel_R:%3.2f,pwm_R:%3d\n",
+               count_R, angle_out_R, angle_vel_R, target_vel_R, vel_R, pwm_R);
+        printf("【Motor_L】count:%i,angle_out:%3.2f,angle_vel_L:%3.2f,target_vel_L:%3.2f,vel_L:%3.2f,pwm_L:%3d\n\n",
         count_L, angle_out_L, angle_vel_L,target_vel_L,vel_L,pwm_L);
         odom_pub_.publish(odom_);
         rate.sleep();
