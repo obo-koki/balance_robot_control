@@ -41,6 +41,8 @@ BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
         nh.getParam("/KI_VEL_L", KI_L);
     if(nh.hasParam("/KD_VEL_L"))
         nh.getParam("/KD_VEL_L", KD_L);
+    if(nh.hasParam("/A_VEL"))
+        nh.getParam("/A_VEL", a_vel);
 
     // For PID debug
     vel_pub_R_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_R",5);
@@ -289,13 +291,17 @@ void BaseRobotControl_TB::timer_callback(const ros::WallTimerEvent &e){
     angle_out_L = calc_angle_output(count_L);
     angle_vel_L = -1.0*(360.0 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD);
     count_L_pre = count_L;
+
+    //low path filter
+    angle_vel_R = a_vel * angle_vel_R + (1 - a_vel) * angle_vel_R_pre;
+    angle_vel_L = a_vel * angle_vel_L + (1 - a_vel) * angle_vel_L_pre;
+    angle_vel_R_pre = vel_R;
+    angle_vel_L_pre = vel_L;
+
     //Calculate vel
     vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
     vel_L = WHEEL_DIA / 2.0 * (angle_vel_L / 360.0 *PI);
-    vel_R = a_vel * vel_R + (1 - a_vel) * vel_R_pre;
-    vel_L = a_vel * vel_L + (1 - a_vel) * vel_L_pre;
-    vel_R_pre = vel_R;
-    vel_L_pre = vel_L;
+    
     //For PID debug
     geometry_msgs::Twist motor_vel_R, motor_vel_L,motor_vel_ref_R,motor_vel_ref_L;
     motor_vel_R.linear.x = vel_R;

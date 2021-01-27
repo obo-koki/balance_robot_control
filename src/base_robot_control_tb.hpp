@@ -95,23 +95,24 @@ class BaseRobotControl_TB{
         int count_R_pre;
         float angle_out_R; //[deg]
         float angle_vel_R; //[deg/s]
+        float angle_vel_R_pre; //[deg/s]
+        //float angle_vel_R_fil; //[deg/s]
 
         static int count_L;
         int count_L_pre;
         float angle_out_pre_L; //[deg]
         float angle_out_L; //[deg]
         float angle_vel_L; //[deg/s]
+        float angle_vel_L_pre; //[deg/s]
+        //float angle_vel_L_fil; //[deg/s]
 
         // Wheel velocity
         float vel_R; //[m/s]
-        float vel_R_pre; //[m/s]
-        float vel_R_fil; //[m/s]
+    
         float target_vel_R; //[m/s]
         int pwm_R; // 0 ~ PWM_RANGE
 
         float vel_L; //[m/s]
-        float vel_L_pre; //[m/s]
-        float vel_L_fil; //[m/s]
         float target_vel_L; //[m/s]
         int pwm_L; // 0 ~ PWM_RANGE
 
