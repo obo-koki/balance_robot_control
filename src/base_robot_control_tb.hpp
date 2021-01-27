@@ -55,6 +55,9 @@
 #define WHEEL_DIA 0.066 //[m]
 #define WHEEL_DIST 0.180 //[m]
 
+//Range of Integral
+#define INTEG_RANGE 100.0
+
 //PID Gain
 /*
 #define KP_R 2.0
@@ -96,19 +99,17 @@ class BaseRobotControl_TB{
         float angle_out_R; //[deg]
         float angle_vel_R; //[deg/s]
         float angle_vel_R_pre; //[deg/s]
-        //float angle_vel_R_fil; //[deg/s]
+        float target_angle_vel_R; //[deg/s]
 
         static int count_L;
         int count_L_pre;
-        float angle_out_pre_L; //[deg]
         float angle_out_L; //[deg]
         float angle_vel_L; //[deg/s]
         float angle_vel_L_pre; //[deg/s]
-        //float angle_vel_L_fil; //[deg/s]
+        float target_angle_vel_L; //[deg/s]
 
         // Wheel velocity
         float vel_R; //[m/s]
-    
         float target_vel_R; //[m/s]
         int pwm_R; // 0 ~ PWM_RANGE
 
@@ -117,7 +118,7 @@ class BaseRobotControl_TB{
         int pwm_L; // 0 ~ PWM_RANGE
 
         // Vel filter param
-        const float a_vel = 0.5;
+        float a_vel;
 
 
         // Odometry
@@ -183,6 +184,7 @@ class BaseRobotControl_TB{
         virtual float calc_angle_output(int);
         virtual void calc_odom();
         virtual void motor_control();
+        virtual void motor_control_omega();
 
     public:
         BaseRobotControl_TB(ros::NodeHandle);

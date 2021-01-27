@@ -118,19 +118,19 @@ BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
     count_R = 0;
     count_R_pre = 0;
     angle_out_R = 0.0; //[deg]
-    angle_vel_R = 0.0; //[deg/s]
+    angle_vel_R = angle_vel_R_pre = 0.0; //[deg/s]
 
     count_L = 0;
     count_L_pre = 0;
     angle_out_L = 0.0; //[deg]
-    angle_vel_L = 0.0; //[deg/s]
+    angle_vel_L = angle_vel_L_pre = 0.0; //[deg/s]
 
     //Initialize Wheel velocity
-    vel_R = vel_R_pre = vel_R_fil = 0.0; //[m/s]
+    vel_R = 0.0; //[m/s]
     target_vel_R = 0.0; //[m/s]
     pwm_R = 0.0; // 0 ~ PWM_RANGE
 
-    vel_L = vel_L_pre = vel_L_fil = 0.0; //[m/s]
+    vel_L = 0.0; //[m/s]
     target_vel_L = 0.0; //[m/s]
     pwm_L = 0.0; // 0 ~ PWM_RANGE
     
@@ -219,6 +219,8 @@ void BaseRobotControl_TB::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr 
     std::lock_guard<std::mutex> lock(m);
     target_vel_R = -(vel->linear.x + vel->angular.z * WHEEL_DIST);
     target_vel_L = vel->linear.x - vel->angular.z * WHEEL_DIST;
+    target_angle_vel_R = target_vel_R / (WHEEL_DIA / 2);
+    target_angle_vel_L = target_vel_L / (WHEEL_DIA / 2);
 }
 
 void BaseRobotControl_TB::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
@@ -299,22 +301,30 @@ void BaseRobotControl_TB::timer_callback(const ros::WallTimerEvent &e){
     angle_vel_L_pre = vel_L;
 
     //Calculate vel
-    vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
-    vel_L = WHEEL_DIA / 2.0 * (angle_vel_L / 360.0 *PI);
-    
+    //vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
+    //vel_L = WHEEL_DIA / 2.0 * (angle_vel_L / 360.0 *PI);
+    vel_R = WHEEL_DIA / 2.0 * angle_vel_R;
+    vel_L = WHEEL_DIA / 2.0 * angle_vel_L;
+
     //For PID debug
     geometry_msgs::Twist motor_vel_R, motor_vel_L,motor_vel_ref_R,motor_vel_ref_L;
-    motor_vel_R.linear.x = vel_R;
-    motor_vel_L.linear.x = vel_L;
     motor_vel_ref_R.linear.x = target_vel_R;
     motor_vel_ref_L.linear.x = target_vel_L;
+    motor_vel_ref_R.angular.y = target_angle_vel_R;
+    motor_vel_ref_L.angular.y = target_angle_vel_L;
+    motor_vel_R.linear.x = vel_R;
+    motor_vel_L.linear.x = vel_L;
+    motor_vel_R.angular.y = angle_vel_R;
+    motor_vel_L.angular.y = angle_vel_L;
+    
     vel_pub_R_.publish(motor_vel_R);
     vel_pub_L_.publish(motor_vel_L);
     vel_ref_pub_R_.publish(motor_vel_ref_R);
     vel_ref_pub_L_.publish(motor_vel_ref_L);
 
     calc_odom();
-    motor_control();
+    //motor_control();
+    motor_control_omega();
 }
 
 void BaseRobotControl_TB::motor_stop(){
@@ -337,6 +347,42 @@ void BaseRobotControl_TB::motor_control(){
 
     diff_L = target_vel_L - vel_L;
     integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
+    differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
+
+    pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
+    pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
+
+    // Decide dir by pwm code
+    //dir_R = (pwm_R >=0) ? PI_HIGH : PI_LOW;
+    //dir_L = (pwm_L >=0) ? PI_HIGH : PI_LOW;
+
+    //Write PWM
+    /*
+    gpio_write(pi, MOTOR_DIR_R, dir_R);
+    set_PWM_dutycycle(pi, MOTOR_PWM_R, abs(pwm_R));
+
+    gpio_write(pi, MOTOR_DIR_L, dir_L);
+    set_PWM_dutycycle(pi, MOTOR_PWM_L, abs(pwm_L));
+    */
+    driver->drive(driver->A, pwm_L);
+    driver->drive(driver->B, pwm_R);
+}
+
+void BaseRobotControl_TB::motor_control_omega(){
+    //bool dir_R, dir_L;
+    
+    // PID
+    diff_R = target_angle_vel_R - angle_vel_R;
+    integral_R += (diff_R + diff_pre_R)/2.0*PROCESS_PERIOD;
+    integral_R = std::min(std::max((float)(-1* INTEG_RANGE), integral_R), (float)INTEG_RANGE);
+    differential_R = (diff_R - diff_pre_R) / PROCESS_PERIOD;
+
+    pwm_R = KP_R*diff_R + KI_R*integral_R + KD_R*differential_R;
+    pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
+
+    diff_L = target_angle_vel_L - angle_vel_L;
+    integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
+    integral_L = std::min(std::max((float)(-1 * INTEG_RANGE), integral_L), (float)INTEG_RANGE);
     differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
 
     pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
