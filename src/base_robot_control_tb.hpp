@@ -92,7 +92,7 @@ class BaseRobotControl_TB{
 
         //Encoder
         const int count_turn_en = 4 * PULSE_NUM;
-        const int count_turn_out = count_turn_en * REDUCTION_RATIO;
+        const int count_turn_out = count_turn_en * REDUCTION_RATIO; //wheel count
 
         static int count_R;
         int count_R_pre;
@@ -184,7 +184,7 @@ class BaseRobotControl_TB{
         virtual float calc_angle_output(int);
         virtual void calc_odom();
         virtual void motor_control();
-        virtual void motor_control_omega();
+        virtual void motor_control_angular();
 
     public:
         BaseRobotControl_TB(ros::NodeHandle);

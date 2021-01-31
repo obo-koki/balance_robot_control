@@ -217,10 +217,12 @@ void BaseRobotControl_TB::encoder_count_L_B(int, unsigned int, unsigned int, uns
 
 void BaseRobotControl_TB::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
     std::lock_guard<std::mutex> lock(m);
-    target_vel_R = -(vel->linear.x + vel->angular.z * WHEEL_DIST);
-    target_vel_L = vel->linear.x - vel->angular.z * WHEEL_DIST;
-    target_angle_vel_R = target_vel_R / (WHEEL_DIA / 2);
-    target_angle_vel_L = target_vel_L / (WHEEL_DIA / 2);
+    //target_vel_R = -(vel->linear.x + vel->angular.z * WHEEL_DIST);
+    //target_vel_L = vel->linear.x - vel->angular.z * WHEEL_DIST;
+    target_vel_R = vel->linear.x + vel->angular.z * WHEEL_DIST/2 ;
+    target_vel_L = vel->linear.x - vel->angular.z * WHEEL_DIST/2;
+    target_angle_vel_R = -target_vel_R / (WHEEL_DIA / 2.0) / (2.0*PI) * 360.0;
+    target_angle_vel_L = target_vel_L / (WHEEL_DIA / 2.0) / (2.0*PI) * 360.0;
 }
 
 void BaseRobotControl_TB::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
@@ -291,20 +293,18 @@ void BaseRobotControl_TB::timer_callback(const ros::WallTimerEvent &e){
     count_R_pre = count_R;
     //Motor L
     angle_out_L = calc_angle_output(count_L);
-    angle_vel_L = -1.0*(360.0 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD);
+    angle_vel_L = (360.0 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD);
     count_L_pre = count_L;
 
     //low path filter
     angle_vel_R = a_vel * angle_vel_R + (1 - a_vel) * angle_vel_R_pre;
     angle_vel_L = a_vel * angle_vel_L + (1 - a_vel) * angle_vel_L_pre;
-    angle_vel_R_pre = vel_R;
-    angle_vel_L_pre = vel_L;
+    angle_vel_R_pre = angle_vel_R;
+    angle_vel_L_pre = angle_vel_L;
 
     //Calculate vel
-    //vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
-    //vel_L = WHEEL_DIA / 2.0 * (angle_vel_L / 360.0 *PI);
-    vel_R = WHEEL_DIA / 2.0 * angle_vel_R;
-    vel_L = WHEEL_DIA / 2.0 * angle_vel_L;
+    vel_R = WHEEL_DIA / 2.0 * angle_vel_R *2.0 *PI / 360.0;
+    vel_L = WHEEL_DIA / 2.0 * angle_vel_L *2.0 *PI / 360.0;
 
     //For PID debug
     geometry_msgs::Twist motor_vel_R, motor_vel_L,motor_vel_ref_R,motor_vel_ref_L;
@@ -324,7 +324,7 @@ void BaseRobotControl_TB::timer_callback(const ros::WallTimerEvent &e){
 
     calc_odom();
     //motor_control();
-    motor_control_omega();
+    motor_control_angular();
 }
 
 void BaseRobotControl_TB::motor_stop(){
@@ -368,7 +368,7 @@ void BaseRobotControl_TB::motor_control(){
     driver->drive(driver->B, pwm_R);
 }
 
-void BaseRobotControl_TB::motor_control_omega(){
+void BaseRobotControl_TB::motor_control_angular(){
     //bool dir_R, dir_L;
     
     // PID
@@ -416,10 +416,10 @@ void BaseRobotControl_TB::main_loop(){
     {
         printf("PID R P:%f, I:%f, D:%f\n", KP_R, KI_R, KD_R);
         printf("PID L P:%f, I:%f, D:%f\n", KP_L, KI_L, KD_L);
-        printf("【Motor_R】count:%i,angle_out:%3.2f,angle_vel_R:%3.2f,target_vel_R:%3.2f,vel_R:%3.2f,pwm_R:%3d\n",
-               count_R, angle_out_R, angle_vel_R, target_vel_R, vel_R, pwm_R);
-        printf("【Motor_L】count:%i,angle_out:%3.2f,angle_vel_L:%3.2f,target_vel_L:%3.2f,vel_L:%3.2f,pwm_L:%3d\n\n",
-        count_L, angle_out_L, angle_vel_L,target_vel_L,vel_L,pwm_L);
+        printf("【Motor_R】count:%i,angle_out:%3.2f,angle_vel_R:%3.2f,target_agnle_vel_R:%3.2f,vel_R:%3.2f,pwm_R:%3d\n",
+               count_R, angle_out_R, angle_vel_R, target_angle_vel_R, vel_R, pwm_R);
+        printf("【Motor_L】count:%i,angle_out:%3.2f,angle_vel_L:%3.2f,target_angle_vel_L:%3.2f,vel_L:%3.2f,pwm_L:%3d\n\n",
+        count_L, angle_out_L, angle_vel_L,target_angle_vel_L,vel_L,pwm_L);
         odom_pub_.publish(odom_);
         rate.sleep();
     }
