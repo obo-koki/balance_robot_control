@@ -1,0 +1,72 @@
+<?xml version="1.0" ?>
+<robot name="balance_robot" xmlns:xacro="http://www.ros.org/wiki/xacro" >
+
+<gazebo>
+  <plugin filename="libgazebo_ros_control.so" name="gazebo_ros_control">
+    <robotNamespace>/balance_robot</robotNamespace>
+    <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+    <legacyModeNS>true</legacyModeNS>
+  </plugin>
+</gazebo>
+
+<gazebo>
+  <plugin name="ground_truth" filename="libgazebo_ros_p3d.so">
+    <frameName>world</frameName>
+    <bodyName>base_link</bodyName>
+    <topicName>/tracker</topicName>
+    <updateRate>10.0</updateRate>
+  </plugin>
+</gazebo>
+
+<gazebo reference="base_link">
+  <material>Gazebo/Gray</material>
+  <mu1>1.0</mu1>
+  <mu2>1.0</mu2>
+  <!--
+  <selfCollide>true</selfCollide>
+  <gravity>true</gravity>
+  -->
+</gazebo>
+<gazebo reference="imu_link">
+  <gravity>true</gravity>
+  <sensor name="imu_sensor" type="imu">
+    <always_on>true</always_on>
+    <update_rate>100</update_rate>
+    <visualize>true</visualize>
+    <topic>data</topic>
+    <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+      <topicName>imu/data</topicName>
+      <bodyName>imu_link</bodyName>
+      <updateRateHZ>10.0</updateRateHZ>
+      <gaussianNoise>0.0</gaussianNoise>
+      <xyzOffset>0 0 0</xyzOffset>
+      <rpyOffset>0 0 0</rpyOffset>
+      <frameName>imu_link</frameName>
+    </plugin>
+    <pose>0 0 0 0 0 0</pose>
+  </sensor>
+</gazebo>
+
+<gazebo reference="left_wheel">
+  <material>Gazebo/Black</material>
+  <mu1>2.5</mu1>
+  <mu2>2.5</mu2>
+  <kp value="50000" />
+  <kd value="10" />
+  <!--
+  <selfCollide>true</selfCollide>
+  -->
+</gazebo>
+
+<gazebo reference="right_wheel">
+  <material>Gazebo/Black</material>
+  <mu1>2.5</mu1>
+  <mu2>2.5</mu2>
+  <kp value="50000" />
+  <kd value="10" />
+  <!--
+  <selfCollide>true</selfCollide>
+  -->
+</gazebo>
+
+</robot>
