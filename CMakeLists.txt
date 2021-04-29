@@ -44,9 +44,9 @@ add_executable(balance_robot_control
   src/control_main.cpp
   src/balance_robot_control.hpp
   src/balance_robot_control.cpp
-  src/base_robot_control_tb.hpp
-  src/base_robot_control_tb.cpp
-  src/tb6612.hpp
+  src/base_robot_control_drv8833.hpp
+  src/base_robot_control_drv8833.cpp
+  src/drv8833.hpp
 )
 
 target_link_libraries(balance_robot_control
