@@ -26,14 +26,14 @@
 #define PULSE_NUM 11 //encoder pulse number
 #define REDUCTION_RATIO 90
 
-#define PROCESS_PERIOD 0.001 //[sec]
+#define PROCESS_PERIOD 0.0005 //[sec]
 
 //Motor Driver DRV8833
 #define MOTOR_DRIVER_RI1 12 //Forward pwm
 #define MOTOR_DRIVER_RI2 25 //Backward pwm
 
 #define MOTOR_DRIVER_LI1 13 //Forward pwm
-#define MOTOR_DRIVER_LI2 6 //Backward pwm
+#define MOTOR_DRIVER_LI2 26 //Backward pwm
 
 //PWM
 #define PWM_RANGE 255 // You can change 25~40000 (default 255)
@@ -137,7 +137,6 @@ class BaseRobotControl_DRV8833{
         virtual void timer_callback(const ros::WallTimerEvent&);
 
         //Other
-        
         virtual float calc_angle_output(int);
         virtual void calc_odom();
         virtual void motor_control();
@@ -145,7 +144,7 @@ class BaseRobotControl_DRV8833{
     public:
         BaseRobotControl_DRV8833(ros::NodeHandle);
         virtual void motor_stop();
-        void main_loop();
+        virtual void main_loop();
         
 };
 

@@ -1,0 +1,31 @@
+!!python/object/new:dynamic_reconfigure.encoding.Config
+dictitems:
+  gain_error_backward: 0.0
+  gain_error_forward: 0.0
+  gain_fai_backward: 0.0
+  gain_fai_forward: 0.0
+  gain_omega_backward: -0.34
+  gain_omega_forward: -0.32
+  gain_theta_backward: -75.0
+  gain_theta_forward: -70.0
+  groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+    dictitems:
+      gain_error_backward: 0.0
+      gain_error_forward: 0.0
+      gain_fai_backward: 0.0
+      gain_fai_forward: 0.0
+      gain_omega_backward: -0.34
+      gain_omega_forward: -0.32
+      gain_theta_backward: -75.0
+      gain_theta_forward: -70.0
+      groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      id: 0
+      name: Default
+      parameters: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      parent: 0
+      state: true
+      type: ''
+    state: []
+state: []

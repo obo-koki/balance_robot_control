@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
     az = read_word_2c(fd, ACCEL_Z_OUT) / 16384.0;
 
     calcEuler(ax, ay, az, &roll, &pitch, &yaw);
-    q.setRPY(roll, pitch, yaw);
+    q.setRPY(-pitch, roll, yaw); //change for real sensor pose
     transform.setRotation(q);
     transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
 
@@ -90,11 +90,11 @@ int main(int argc, char **argv) {
     imu.orientation.z = q[2];
     imu.orientation.w = q[3];
 
-    imu.angular_velocity.x = gx;
-    imu.angular_velocity.y = gy;
+    imu.angular_velocity.x = -gy; //change for real sensor pose
+    imu.angular_velocity.y = gx; //change for real sensor pose
     imu.angular_velocity.z = gz;
-    imu.linear_acceleration.x = ax;
-    imu.linear_acceleration.y = ay;
+    imu.linear_acceleration.x = -ay; //change for real sensor pose
+    imu.linear_acceleration.y = ax; //change for real sensor pose
     imu.linear_acceleration.z = az;
 
     // Pub & Broadcast, sleep.

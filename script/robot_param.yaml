@@ -1,0 +1,28 @@
+#robot param
+body_mass: 0.8
+body_to_wheel_dist: 0.10
+body_inertia: 0.008
+body_vis_fric: 0.1
+
+#wheel param
+wheel_mass: 0.05
+wheel_radius: 0.0065
+wheel_inertia: 0.00010625
+wheel_vis_fric: 0.1
+
+#motor param
+motor_inertia: 0.00002 #予想
+reduction_ratio: 90
+motor_resist: 3.2
+torque_const: 0.98
+induced_volt_const: 0.98
+
+#lqr param
+Q: [
+   [1000, 0, 0, 0],
+   [0, 10, 0, 0],
+   [0, 0, 1, 0],
+   [0, 0, 0, 1.5]
+] 
+
+R: 1

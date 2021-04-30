@@ -9,6 +9,11 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs
   tf
+  dynamic_reconfigure
+)
+
+generate_dynamic_reconfigure_options(
+  cfg/gain.cfg
 )
 
 catkin_package(
@@ -25,21 +30,7 @@ target_link_libraries(mpu6050
   wiringPi
 )
 
-#Encoder
-add_executable(encoder src/encoder_counter.cpp)
-target_link_libraries(encoder
-  ${catkin_LIBRARIES}
-  wiringPi
-)
-
 #Motor Control
-#add_executable(balance_robot_control 
-#  src/control_main.cpp
-#  src/balance_robot_control.hpp
-#  src/balance_robot_control.cpp
-#  src/base_robot_control.hpp
-#  src/base_robot_control.cpp
-#)
 add_executable(balance_robot_control 
   src/control_main.cpp
   src/balance_robot_control.hpp
@@ -54,10 +45,3 @@ target_link_libraries(balance_robot_control
   wiringPi
   pigpiod_if2
 )
-
-#add_executable(balance_robot_control_tb src/balance_robot_control_tb.cpp)
-#target_link_libraries(balance_robot_control_tb
-#  ${catkin_LIBRARIES}
-#  wiringPi
-#  pigpiod_if2
-#)
