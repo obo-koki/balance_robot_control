@@ -2,10 +2,45 @@
 #include "drv8833.hpp"
 
 int BaseRobotControl_DRV8833::pi;
+int BaseRobotControl_DRV8833::EN_R_A;
+int BaseRobotControl_DRV8833::EN_R_B;
+int BaseRobotControl_DRV8833::EN_L_A;
+int BaseRobotControl_DRV8833::EN_L_B;
 int BaseRobotControl_DRV8833::count_R;
 int BaseRobotControl_DRV8833::count_L;
 
-BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh){
+BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh, ros::NodeHandle pnh){
+    // get param
+    pnh.param<int>("EN_R_A", EN_R_A, 23); //pnh.param<type>("param name", param_variable, default value);
+    pnh.param<int>("EN_R_A", EN_R_B, 24);
+    pnh.param<int>("EN_L_A", EN_L_A, 17);
+    pnh.param<int>("EN_L_A", EN_L_B, 27);
+
+    pnh.param<int>("PULSE_NUM", PULSE_NUM, 11);
+    pnh.param<int>("REDUCTION_RATIO", REDUCTION_RATIO, 90);
+
+    pnh.param<int>("MOTOR_DRIVER_RI1", MOTOR_DRIVER_RI1, 12);
+    pnh.param<int>("MOTOR_DRIVER_RI2", MOTOR_DRIVER_RI2, 25);
+
+    pnh.param<int>("MOTOR_DRIVER_LI1", MOTOR_DRIVER_LI1, 13);
+    pnh.param<int>("MOTOR_DRIVER_LI2", MOTOR_DRIVER_LI2, 26);
+
+    pnh.param<int>("MOTOR_FREQ", MOTOR_FREQ, 50000);
+
+    pnh.param<int>("PWM_RANGE", PWM_RANGE, 255);
+
+    pnh.param<float>("KP_R", KP_R, 3.0);
+    pnh.param<float>("KI_R", KI_R, 1.0);
+    pnh.param<float>("KD_R", KD_R, 1.0);
+
+    pnh.param<float>("KP_L", KP_L, 3.0);
+    pnh.param<float>("KI_L", KI_L, 1.0);
+    pnh.param<float>("KD_L", KD_L, 1.0);
+
+    pnh.param<float>("WHEEL_DIA", WHEEL_DIA, 0.066);
+    pnh.param<float>("WHEEL_DIST", WHEEL_DIST, 0.180);
+
+    pnh.param<float>("PROCESS_PERIOD", PROCESS_PERIOD, 0.0005);
 
     // pigpio
     pi = pigpio_start(0,0);
@@ -22,7 +57,6 @@ BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh){
     }
 
     //ROS
-    node_handle_ = nh;
     odom_pub_ = nh.advertise<nav_msgs::Odometry>("/odom",5);
     vel_sub_ = nh.subscribe("/cmd_vel", 10, &BaseRobotControl_DRV8833::cmd_vel_callback, this);
     imu_sub_ = nh.subscribe("/imu/data", 10, &BaseRobotControl_DRV8833::imu_callback, this);
@@ -35,7 +69,6 @@ BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh){
     PID_sub_L_ = nh.subscribe("/PID_L",10,&BaseRobotControl_DRV8833::PID_L_callback,this);
 
     driver = new DRV8833();
-
     driver->setPinMode(pi, MOTOR_DRIVER_LI1, MOTOR_DRIVER_LI2, MOTOR_DRIVER_RI1, MOTOR_DRIVER_RI2);
 
     pinMode(EN_R_A, INPUT);

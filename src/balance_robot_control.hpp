@@ -14,10 +14,11 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         void vel_callback(const geometry_msgs::Twist::ConstPtr&);
         void motor_control();
 
-        double robot_pitch;
-        double robot_pitch_pre;
-        double robot_pitch_vel;
-        double robot_pitch_vel_pre;
+        // varible for state feed back
+        double robot_pitch; //[rad]
+        double robot_pitch_pre; //[rad]
+        double robot_pitch_vel; //[rad/s]
+        double robot_pitch_vel_pre; //[rad/s]
         double linear_x;
         double target_linear_x;
         double target_angular_z;
@@ -26,23 +27,17 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         double diff;
         double diff_pre;
         double volt;
-        std::vector<double> control_gain_forward_;
-        std::vector<double> control_gain_backward_;
+        std::vector<double> control_gain_;
 
         //Dynamic param
         dynamic_reconfigure::Server<balance_robot_control::gainConfig> param_server_;
         dynamic_reconfigure::Server<balance_robot_control::gainConfig>::CallbackType callback_;
         void param_callback(const balance_robot_control::gainConfig& config, uint32_t level);
 
-        double gain_theta_forward_;
-        double gain_omega_forward_;
-        double gain_fai_forward_;
-        double gain_error_forward_;
-
-        double gain_theta_backward_;
-        double gain_omega_backward_;
-        double gain_fai_backward_;
-        double gain_error_backward_;
+        double gain_theta_;
+        double gain_omega_;
+        double gain_fai_;
+        double gain_error_;
 
     public:
         //Other

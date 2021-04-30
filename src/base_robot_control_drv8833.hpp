@@ -16,40 +16,42 @@
 #include <mutex>
 #include "drv8833.hpp"
 
-//Encoder
-#define EN_R_A 23 //Green
-#define EN_R_B 24 //Yellow
-
-#define EN_L_A 17 //Green
-#define EN_L_B 27 //Yellow
-
-#define PULSE_NUM 11 //encoder pulse number
-#define REDUCTION_RATIO 90
-
-#define PROCESS_PERIOD 0.0005 //[sec]
-
-//Motor Driver DRV8833
-#define MOTOR_DRIVER_RI1 12 //Forward pwm
-#define MOTOR_DRIVER_RI2 25 //Backward pwm
-
-#define MOTOR_DRIVER_LI1 13 //Forward pwm
-#define MOTOR_DRIVER_LI2 26 //Backward pwm
-
-//PWM
-#define PWM_RANGE 255 // You can change 25~40000 (default 255)
-#define MOTOR_FREQ 50000 // 50 kHz (= max motor driver freq)
-
-//Odometry
-#define WHEEL_DIA 0.066 //[m]
-#define WHEEL_DIST 0.180 //[m]
-
-//Others
-#define PI 3.1415926535
 
 class DRV8833;
 
+#define PI 3.1415926535
+
 class BaseRobotControl_DRV8833{
     protected:
+    //Encoder
+        static int EN_R_A; //Green
+        static int EN_R_B; //Yellow
+
+        static int EN_L_A; //Green
+        static int EN_L_B; //Yellow
+
+        int PULSE_NUM; 
+        int REDUCTION_RATIO;
+
+        float PROCESS_PERIOD; //[sec]
+
+        //Motor Driver DRV8833
+        int MOTOR_DRIVER_RI1; //Forward pwm
+        int MOTOR_DRIVER_RI2; //Backward pwm
+
+        int MOTOR_DRIVER_LI1; //Forward pwm
+        int MOTOR_DRIVER_LI2; //Backward pwm
+
+        //PWM
+        int PWM_RANGE; 
+        int MOTOR_FREQ; 
+
+        //Odometry
+        float WHEEL_DIA; //[m]
+        float WHEEL_DIST; //[m]
+
+        //Others
+
         static int pi;
         
         DRV8833* driver;
@@ -85,20 +87,19 @@ class BaseRobotControl_DRV8833{
         // Vel filter param
         const float a_vel = 0.5;
 
-
         // Odometry
         float odom_x; //[m]
         float odom_y; //[m]
         float odom_th; //[rad]
 
         // PID
-        float KP_R = 3.0;
-        float KI_R = 1.0;
-        float KD_R = 1.0;
+        float KP_R;
+        float KI_R;
+        float KD_R;
 
-        float KP_L = 3.0;
-        float KI_L = 1.0;
-        float KD_L = 1.0;
+        float KP_L;
+        float KI_L;
+        float KD_L;
 
         float diff_R, diff_pre_R;
         float integral_R, differential_R;
@@ -118,7 +119,6 @@ class BaseRobotControl_DRV8833{
         static void encoder_count_L_B();
 
         //ros
-        ros::NodeHandle node_handle_;
         nav_msgs::Odometry odom_;
         ros::Publisher odom_pub_;
         ros::Publisher vel_pub_R_; // for PID debug
@@ -142,7 +142,7 @@ class BaseRobotControl_DRV8833{
         virtual void motor_control();
 
     public:
-        BaseRobotControl_DRV8833(ros::NodeHandle);
+        BaseRobotControl_DRV8833(ros::NodeHandle, ros::NodeHandle);
         virtual void motor_stop();
         virtual void main_loop();
         

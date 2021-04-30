@@ -1,2 +1,40 @@
-control_gain_forward: [-100, -0.32, 0, 0]
-control_gain_backward: [-100, -0.32, 0, 0]
+# Encoder
+EN_R_A: 23 #Motor R green
+EN_R_B: 24 #Motor R yellow
+
+EN_L_A: 17 #Motor L green
+EN_L_B: 27 #Motor L yellow
+
+PULSE_NUM: 11
+REDUCTION_RATIO: 90
+
+# Motor driver -> DRV8833
+MOTOR_DRIVER_RI1: 12 # forward pwm
+MOTOR_DRIVER_RI2: 25 # backward pwm
+
+MOTOR_DRIVER_LI1: 13 # forward pwm
+MOTOR_DRIVER_LI2: 26 # backward pwm
+
+MOTOR_FREQ: 50000 # 50 kHz (= max motor driver freq)
+
+# PWM
+PWM_RANGE: 255 # You can change 25~40000 (default 255)
+
+#PID
+KP_R: 3.0
+KI_R: 1.0
+KD_R: 1.0
+
+KP_L: 3.0
+KI_L: 1.0
+KD_L: 1.0
+
+# Robot info
+WHEEL_DIA: 0.066 #[m]
+WHEEL_DIST: 0.180 #[m]
+
+# Control ratio
+PROCESS_PERIOD: 0.0005 #[sec]
+
+# Control gain
+control_gain: [-100, -0.32, 0, 0]
