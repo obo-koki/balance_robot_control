@@ -2,6 +2,7 @@
 <launch>
 
   #### Robot Controller
+  <rosparam file="$(find balance_robot_control)/script/control_param.yaml" command="load" ns="balance_robot_control" />
   <node pkg="balance_robot_control" type="balance_robot_control" name="balance_robot_control" 
     output="screen">
   </node>
