@@ -12,9 +12,9 @@ int BaseRobotControl_DRV8833::count_L;
 BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh, ros::NodeHandle pnh){
     // get param
     pnh.param<int>("EN_R_A", EN_R_A, 23); //pnh.param<type>("param name", param_variable, default value);
-    pnh.param<int>("EN_R_A", EN_R_B, 24);
+    pnh.param<int>("EN_R_B", EN_R_B, 24);
     pnh.param<int>("EN_L_A", EN_L_A, 17);
-    pnh.param<int>("EN_L_A", EN_L_B, 27);
+    pnh.param<int>("EN_L_B", EN_L_B, 27);
 
     pnh.param<int>("PULSE_NUM", PULSE_NUM, 11);
     pnh.param<int>("REDUCTION_RATIO", REDUCTION_RATIO, 90);
@@ -41,6 +41,9 @@ BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh, ros::Node
     pnh.param<float>("WHEEL_DIST", WHEEL_DIST, 0.180);
 
     pnh.param<float>("PROCESS_PERIOD", PROCESS_PERIOD, 0.0005);
+
+    count_turn_en = 4 * PULSE_NUM;
+    count_turn_out = count_turn_en * REDUCTION_RATIO;
 
     // pigpio
     pi = pigpio_start(0,0);

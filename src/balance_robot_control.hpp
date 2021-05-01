@@ -27,9 +27,11 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         double diff;
         double diff_pre;
         double volt;
-        std::vector<double> control_gain_;
 
         //Dynamic param
+        std::vector<double> control_gain_;
+        double pitch_center_;
+        double safe_radius_;
         dynamic_reconfigure::Server<balance_robot_control::gainConfig> param_server_;
         dynamic_reconfigure::Server<balance_robot_control::gainConfig>::CallbackType callback_;
         void param_callback(const balance_robot_control::gainConfig& config, uint32_t level);
@@ -38,6 +40,9 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         double gain_omega_;
         double gain_fai_;
         double gain_error_;
+
+        bool use_safe_mode_;
+        bool use_run_mode_;
 
     public:
         //Other

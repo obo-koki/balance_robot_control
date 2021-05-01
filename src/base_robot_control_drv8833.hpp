@@ -57,8 +57,8 @@ class BaseRobotControl_DRV8833{
         DRV8833* driver;
 
         //Encoder
-        const int count_turn_en = 4 * PULSE_NUM;
-        const int count_turn_out = count_turn_en * REDUCTION_RATIO;
+        int count_turn_en;
+        int count_turn_out;
 
         static int count_R;
         int count_R_pre;

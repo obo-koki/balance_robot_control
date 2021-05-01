@@ -3,6 +3,8 @@
 BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh, ros::NodeHandle pnh)
 :BaseRobotControl_DRV8833(nh, pnh){
     pnh.getParam("control_gain", control_gain_);
+    pnh.getParam("use_safe_mode", use_safe_mode_);
+    pnh.getParam("use_run_mode", use_run_mode_);
 
     //dynamic param
     callback_ = boost::bind(&BalanceRobotControl::param_callback, this, _1, _2);
@@ -23,7 +25,7 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh, ros::NodeHandle pnh
 
 void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
     std::lock_guard<std::mutex> lock(m);
-    robot_pitch = atan(-imu->linear_acceleration.x/(sqrt(pow(imu->linear_acceleration.y,2)+pow(imu->linear_acceleration.z,2))))+0.015;
+    robot_pitch = atan(-imu->linear_acceleration.x/(sqrt(pow(imu->linear_acceleration.y,2)+pow(imu->linear_acceleration.z,2))))+pitch_center_;
     robot_pitch_vel = imu->angular_velocity.y + 3.13;
 }
 
@@ -41,55 +43,62 @@ void BalanceRobotControl::param_callback(const balance_robot_control::gainConfig
     gain_omega_ = config.gain_omega;
     gain_fai_ = config.gain_fai;
     gain_error_ = config.gain_error;
+
+    pitch_center_ = config.pitch_center;
+    safe_radius_ = config.safe_radius;
 }
 
 void BalanceRobotControl::motor_control(){
 
     if (abs(robot_pitch) > 0.5){
-        //give up
-        volt = 0.00;
-    } else {
+        // give up mode -> No useless control
+        pwm_L = 0.0;
+        pwm_R = 0.0;
+
+    }else if ((abs(robot_pitch) > safe_radius_ && use_safe_mode_)|| !use_run_mode_){
+        // safe mode ->LQR pose control
         wheel_angle_vel = (angle_vel_R + angle_vel_L) / 2.0;
         volt = gain_theta_ * (robot_pitch)
                 +gain_omega_ * (robot_pitch_vel);
                 +gain_fai_ * (wheel_angle_vel);
         //      -gain_error_ * diff * 1.0/10.0;
+
+        // Motor doesn't move range -50<pwm<50
+        if (volt > 0.01){
+            pwm_R = volt * 190/12 + 65;
+        }else if (volt < -0.01){
+            pwm_R = volt * 190/12 - 65;
+        }else{
+            pwm_R = 0;
+        }
+        pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
+
+        // Motor doesn't move range -50<pwm<50
+        if (volt > 0.01){
+            pwm_L = volt * 190/12 + 65;
+        }else if (volt < -0.01){
+            pwm_L = volt * 190/12 - 65;
+        }else{
+            pwm_L = 0;
+        }
+        pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
+
+    }else if (use_run_mode_){
+        // run mode ->PID velocity control 
+        diff_R = target_vel_R - vel_R;
+        integral_R += (diff_R + diff_pre_R)/2.0*PROCESS_PERIOD;
+        differential_R = (diff_R - diff_pre_R)/PROCESS_PERIOD;
+
+        pwm_R = KP_R*diff_R + KI_R*integral_R + KD_R*differential_R;
+        pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
+
+        diff_L = target_vel_L - vel_L;
+        integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
+        differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
+
+        pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
+        pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
     }
-
-    // PID
-    //diff_R = target_vel_R - vel_R;
-    //integral_R += (diff_R + diff_pre_R)/2.0*PROCESS_PERIOD;
-    //differential_R = (diff_R - diff_pre_R)/PROCESS_PERIOD;
-
-    //pwm_R = KP_R*diff_R + KI_R*integral_R + KD_R*differential_R;
-    //pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
-
-    //diff_L = target_vel_L - vel_L;
-    //integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
-    //differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
-
-    //pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
-    //pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
-
-    // Motor doesn't move range -50<pwm<50
-    if (volt > 0.01){
-        pwm_R = volt * 225/12 + 50;
-    }else if (volt < -0.01){
-        pwm_R = volt * 225/12 - 50;
-    }else{
-        pwm_R = 0;
-    }
-    pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
-
-    // Motor doesn't move range -50<pwm<50
-    if (volt > 0.01){
-        pwm_L = volt * 225/12 + 50;
-    }else if (volt < -0.01){
-        pwm_L = volt * 225/12 - 50;
-    }else{
-        pwm_L = 0;
-    }
-    pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
 
     driver->drive(driver->A, pwm_L);
     driver->drive(driver->B, pwm_R);
