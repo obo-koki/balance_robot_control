@@ -40,6 +40,7 @@ add_executable(balance_robot_control
   src/Filter/LowPassFilter.cpp
   src/Filter/PIDFilters.cpp
   src/Filter/PidControl.cpp
+  src/IMU/MadgwickAHRS.cpp
 )
 
 target_link_libraries(balance_robot_control
