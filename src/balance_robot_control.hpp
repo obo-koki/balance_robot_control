@@ -6,6 +6,8 @@
 #include "base_robot_control_drv8833.hpp"
 #include <dynamic_reconfigure/server.h>
 #include <balance_robot_control/gainConfig.h>
+#include "Filter/LowPassFilter.h"
+#include "Filter/PidControl.h"
 
 class BalanceRobotControl: public BaseRobotControl_DRV8833
 {
@@ -44,6 +46,11 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         // mode use flag
         bool use_safe_mode_;
         bool use_run_mode_;
+
+        // filter
+        LowPassFilter robot_pitch_filter;
+        LowPassFilter robot_pitch_vel_filter;
+        PidControl robot_pitch_controlPID;
 
     public:
         //Other

@@ -33,7 +33,10 @@ class BaseRobotControl_DRV8833{
         int PULSE_NUM; 
         int REDUCTION_RATIO;
 
-        float PROCESS_PERIOD; //[sec]
+    //Process period
+        float MAIN_PROCESS_PERIOD; //[sec]
+        float IMU_MEASURED_PERIOD; //[sec]
+        float VEL_MEASURED_PERIOD; //[sec]
 
         //Motor Driver DRV8833
         int MOTOR_DRIVER_RI1; //Forward pwm

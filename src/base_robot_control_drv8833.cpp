@@ -10,6 +10,7 @@ int BaseRobotControl_DRV8833::count_R;
 int BaseRobotControl_DRV8833::count_L;
 
 BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh, ros::NodeHandle pnh){
+
     // get param
     pnh.param<int>("EN_R_A", EN_R_A, 23); //pnh.param<type>("param name", param_variable, default value);
     pnh.param<int>("EN_R_B", EN_R_B, 24);
@@ -40,7 +41,9 @@ BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh, ros::Node
     pnh.param<float>("WHEEL_DIA", WHEEL_DIA, 0.066);
     pnh.param<float>("WHEEL_DIST", WHEEL_DIST, 0.180);
 
-    pnh.param<float>("PROCESS_PERIOD", PROCESS_PERIOD, 0.0005);
+    pnh.param<float>("MAIN_PROCESS_PERIOD", MAIN_PROCESS_PERIOD, 0.0005);
+    pnh.param<float>("IMU_MEASURED_PERIOD", IMU_MEASURED_PERIOD, 0.0005);
+    pnh.param<float>("VEL_MEASURED_PERIOD", VEL_MEASURED_PERIOD, 0.0005);
 
     count_turn_en = 4 * PULSE_NUM;
     count_turn_out = count_turn_en * REDUCTION_RATIO;
@@ -63,7 +66,7 @@ BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh, ros::Node
     odom_pub_ = nh.advertise<nav_msgs::Odometry>("/odom",5);
     vel_sub_ = nh.subscribe("/cmd_vel", 10, &BaseRobotControl_DRV8833::cmd_vel_callback, this);
     imu_sub_ = nh.subscribe("/imu/data", 10, &BaseRobotControl_DRV8833::imu_callback, this);
-    process_timer_ = nh.createWallTimer(ros::WallDuration(PROCESS_PERIOD),&BaseRobotControl_DRV8833::timer_callback,this);
+    process_timer_ = nh.createWallTimer(ros::WallDuration(MAIN_PROCESS_PERIOD),&BaseRobotControl_DRV8833::timer_callback,this);
 
     // For PID debug
     vel_pub_R_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_R",5);
@@ -206,9 +209,9 @@ void BaseRobotControl_DRV8833::calc_odom(){
     v_y = (vel_R + vel_L)/2 * std::sin(odom_th);
     v_th = (vel_R - vel_L)/ (2*WHEEL_DIST);
 
-    odom_x = odom_x + v_x * PROCESS_PERIOD * std::cos(odom_th + v_th * PROCESS_PERIOD / 2);
-    odom_y = odom_y + v_y * PROCESS_PERIOD * std::sin(odom_th + v_th * PROCESS_PERIOD / 2);
-    odom_th = odom_th + v_th * PROCESS_PERIOD;
+    odom_x = odom_x + v_x * MAIN_PROCESS_PERIOD * std::cos(odom_th + v_th * MAIN_PROCESS_PERIOD / 2);
+    odom_y = odom_y + v_y * MAIN_PROCESS_PERIOD * std::sin(odom_th + v_th * MAIN_PROCESS_PERIOD / 2);
+    odom_th = odom_th + v_th * MAIN_PROCESS_PERIOD;
 
     geometry_msgs::Quaternion odom_q = tf::createQuaternionMsgFromYaw(odom_th);
     odom_.header.frame_id = "odom";
@@ -227,11 +230,11 @@ void BaseRobotControl_DRV8833::timer_callback(const ros::WallTimerEvent &e){
     //pre_time = time;
     //Motor R
     angle_out_R = calc_angle_output(count_R);
-    angle_vel_R = (360.0 * (count_R - count_R_pre) / count_turn_out / PROCESS_PERIOD);
+    angle_vel_R = (360.0 * (count_R - count_R_pre) / count_turn_out / MAIN_PROCESS_PERIOD);
     count_R_pre = count_R;
     //Motor L
     angle_out_L = calc_angle_output(count_L);
-    angle_vel_L = (360.0 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD);
+    angle_vel_L = (360.0 * (count_L - count_L_pre) / count_turn_out / MAIN_PROCESS_PERIOD);
     count_L_pre = count_L;
     //low path filter
     angle_vel_R = a_vel * angle_vel_R + (1 - a_vel) * angle_vel_R_pre;
@@ -268,15 +271,15 @@ void BaseRobotControl_DRV8833::motor_control(){
 
     // PID
     diff_R = target_vel_R - vel_R;
-    integral_R += (diff_R + diff_pre_R)/2.0*PROCESS_PERIOD;
-    differential_R = (diff_R - diff_pre_R)/PROCESS_PERIOD;
+    integral_R += (diff_R + diff_pre_R)/2.0*MAIN_PROCESS_PERIOD;
+    differential_R = (diff_R - diff_pre_R)/MAIN_PROCESS_PERIOD;
 
     pwm_R = KP_R*diff_R + KI_R*integral_R + KD_R*differential_R;
     pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
 
     diff_L = target_vel_L - vel_L;
-    integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
-    differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
+    integral_L += (diff_L + diff_pre_L)/2.0*MAIN_PROCESS_PERIOD;
+    differential_L = (diff_L - diff_pre_L)/MAIN_PROCESS_PERIOD;
 
     pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
     pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);

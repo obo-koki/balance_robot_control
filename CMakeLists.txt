@@ -24,7 +24,7 @@ include_directories(
 )
 
 #IMU driver
-add_executable(mpu6050 src/mpu6050.cpp)
+add_executable(mpu6050 src/IMU/mpu6050.cpp)
 target_link_libraries(mpu6050
   ${catkin_LIBRARIES}
   wiringPi
@@ -33,11 +33,13 @@ target_link_libraries(mpu6050
 #Motor Control
 add_executable(balance_robot_control 
   src/control_main.cpp
-  src/balance_robot_control.hpp
   src/balance_robot_control.cpp
-  src/base_robot_control_drv8833.hpp
   src/base_robot_control_drv8833.cpp
-  src/drv8833.hpp
+  src/Filter/Filter.cpp
+  src/Filter/HighPassFilter.cpp
+  src/Filter/LowPassFilter.cpp
+  src/Filter/PIDFilters.cpp
+  src/Filter/PidControl.cpp
 )
 
 target_link_libraries(balance_robot_control

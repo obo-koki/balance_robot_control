@@ -34,7 +34,9 @@ WHEEL_DIA: 0.066 #[m]
 WHEEL_DIST: 0.180 #[m]
 
 # Control ratio
-PROCESS_PERIOD: 0.0005 #[sec]
+MAIN_PROCESS_PERIOD: 0.0005 #[sec]
+IMU_MEASURED_PERIOD: 0.0005 #[sec]
+VEL_MEASURED_PERIOD: 0.0005 #[sec]
 
 # Control gain
 control_gain: [-100, -0.32, 0, 0]

@@ -1,7 +1,7 @@
 #include "balance_robot_control.hpp"
 
 BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh, ros::NodeHandle pnh)
-:BaseRobotControl_DRV8833(nh, pnh){
+:BaseRobotControl_DRV8833(nh, pnh),robot_pitch_controlPID(0.0,0.0,0.0,0.0,0.0){
     pnh.getParam("control_gain", control_gain_);
     pnh.getParam("use_safe_mode", use_safe_mode_);
     pnh.getParam("use_run_mode", use_run_mode_);
@@ -21,18 +21,28 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh, ros::NodeHandle pnh
     target_linear_x = 0;
     target_angular_z = 0;
     volt = 0;
+
+    //Filter setting
+    robot_pitch_filter.resetFilterParameters(1.0/MAIN_PROCESS_PERIOD, IMU_MEASURED_PERIOD, 1.0);
+    robot_pitch_vel_filter.resetFilterParameters(1.0/MAIN_PROCESS_PERIOD,IMU_MEASURED_PERIOD,1.0);
+
+    robot_pitch_controlPID.setPID(gain_theta_, 0.0, gain_omega_, 0.0, 1.0/MAIN_PROCESS_PERIOD);
+    robot_pitch_controlPID.setExternalDerivativeError(&robot_pitch_vel);
+    robot_pitch_controlPID.setOutputFilter(0.05); // output low path filter
+    robot_pitch_controlPID.setOutputLimits(-PWM_RANGE,PWM_RANGE);
+    robot_pitch_controlPID.setDirection(true);
+    robot_pitch_controlPID.setSetpointRange(20.0 * (M_PI / 180.0));
+    
 }
 
 void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
     std::lock_guard<std::mutex> lock(m);
     // low path filter
     double measured_pitch = atan(-imu->linear_acceleration.x/(sqrt(pow(imu->linear_acceleration.y,2)+pow(imu->linear_acceleration.z,2))))+pitch_center_;
-    robot_pitch = a_vel * measured_pitch + (1 - a_vel) * robot_pitch_pre;
-    robot_pitch_pre = robot_pitch;
+    robot_pitch = robot_pitch_filter.filter(measured_pitch);
     
     double measured_pitch_vel = imu->angular_velocity.y - 3.13;
-    robot_pitch_vel = a_vel * measured_pitch_vel + (1 - a_vel) * robot_pitch_vel_pre;
-    robot_pitch_vel_pre = robot_pitch_vel;
+    robot_pitch_vel = robot_pitch_vel_filter.filter(measured_pitch_vel);
 }
 
 void BalanceRobotControl::vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
@@ -46,7 +56,9 @@ void BalanceRobotControl::param_callback(const balance_robot_control::gainConfig
         config.gain_theta, config.gain_omega, config.gain_fai, config.gain_error);
     
     gain_theta_ = config.gain_theta;
+    robot_pitch_controlPID.setP(gain_theta_);
     gain_omega_ = config.gain_omega;
+    robot_pitch_controlPID.setD(gain_omega_, 0.0);
     gain_fai_ = config.gain_fai;
     gain_error_ = config.gain_error;
 
@@ -63,11 +75,12 @@ void BalanceRobotControl::motor_control(){
 
     }else if ((abs(robot_pitch) > safe_radius_ && use_safe_mode_)|| !use_run_mode_){
         // safe mode ->LQR pose control
-        wheel_angle_vel = (angle_vel_R + angle_vel_L) / 2.0;
-        volt = gain_theta_ * (robot_pitch)
-                +gain_omega_ * (robot_pitch_vel);
-                +gain_fai_ * (wheel_angle_vel);
+        //wheel_angle_vel = (angle_vel_R + angle_vel_L) / 2.0;
+        //volt = gain_theta_ * (robot_pitch)
+                //+gain_omega_ * (robot_pitch_vel);
+                //+gain_fai_ * (wheel_angle_vel);
         //      -gain_error_ * diff * 1.0/10.0;
+        volt = robot_pitch_controlPID.getOutput(0,robot_pitch);
 
         //// Motor doesn't move range -50<pwm<50
         //if (volt > 0.01){
@@ -94,15 +107,15 @@ void BalanceRobotControl::motor_control(){
     }else if (use_run_mode_){
         // run mode ->PID velocity control 
         diff_R = target_vel_R - vel_R;
-        integral_R += (diff_R + diff_pre_R)/2.0*PROCESS_PERIOD;
-        differential_R = (diff_R - diff_pre_R)/PROCESS_PERIOD;
+        integral_R += (diff_R + diff_pre_R)/2.0*MAIN_PROCESS_PERIOD;
+        differential_R = (diff_R - diff_pre_R)/MAIN_PROCESS_PERIOD;
 
         pwm_R = KP_R*diff_R + KI_R*integral_R + KD_R*differential_R;
         pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
 
         diff_L = target_vel_L - vel_L;
-        integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
-        differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
+        integral_L += (diff_L + diff_pre_L)/2.0*MAIN_PROCESS_PERIOD;
+        differential_L = (diff_L - diff_pre_L)/MAIN_PROCESS_PERIOD;
 
         pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
         pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
