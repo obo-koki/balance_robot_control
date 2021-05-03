@@ -10,7 +10,6 @@ int BaseRobotControl_DRV8833::count_R;
 int BaseRobotControl_DRV8833::count_L;
 
 BaseRobotControl_DRV8833::BaseRobotControl_DRV8833(ros::NodeHandle nh, ros::NodeHandle pnh){
-
     // get param
     pnh.param<int>("EN_R_A", EN_R_A, 23); //pnh.param<type>("param name", param_variable, default value);
     pnh.param<int>("EN_R_B", EN_R_B, 24);

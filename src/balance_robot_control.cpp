@@ -30,7 +30,7 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh, ros::NodeHandle pnh
     robot_pitch_controlPID.setExternalDerivativeError(&robot_pitch_vel);
     robot_pitch_controlPID.setOutputFilter(0.05); // output low path filter
     robot_pitch_controlPID.setOutputLimits(-PWM_RANGE,PWM_RANGE);
-    robot_pitch_controlPID.setDirection(true);
+    robot_pitch_controlPID.setDirection(false);
     robot_pitch_controlPID.setSetpointRange(20.0 * (M_PI / 180.0));
     
 }
