@@ -233,6 +233,11 @@ void BaseRobotControl_DRV8833::timer_callback(const ros::WallTimerEvent &e){
     angle_out_L = calc_angle_output(count_L);
     angle_vel_L = (360.0 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD);
     count_L_pre = count_L;
+    //low path filter
+    angle_vel_R = a_vel * angle_vel_R + (1 - a_vel) * angle_vel_R_pre;
+    angle_vel_L = a_vel * angle_vel_L + (1 - a_vel) * angle_vel_L_pre;
+    angle_vel_R_pre = angle_vel_R;
+    angle_vel_L_pre = angle_vel_L;
     //Calculate vel
     vel_R = WHEEL_DIA / 2.0 * (angle_vel_R / 360.0 *PI);
     vel_L = WHEEL_DIA / 2.0 * (angle_vel_L / 360.0 *PI);

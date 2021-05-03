@@ -14,7 +14,7 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         void vel_callback(const geometry_msgs::Twist::ConstPtr&);
         void motor_control();
 
-        // varible for state feed back
+        // Varible for state feed back
         double robot_pitch; //[rad]
         double robot_pitch_pre; //[rad]
         double robot_pitch_vel; //[rad/s]
@@ -41,6 +41,7 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         double gain_fai_;
         double gain_error_;
 
+        // mode use flag
         bool use_safe_mode_;
         bool use_run_mode_;
 

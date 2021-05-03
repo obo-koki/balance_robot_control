@@ -50,7 +50,7 @@ void BalanceRobotControl::param_callback(const balance_robot_control::gainConfig
 
 void BalanceRobotControl::motor_control(){
 
-    if (abs(robot_pitch) > 0.5){
+    if (abs(robot_pitch) > 0.6){
         // give up mode -> No useless control
         pwm_L = 0.0;
         pwm_R = 0.0;
@@ -65,9 +65,9 @@ void BalanceRobotControl::motor_control(){
 
         // Motor doesn't move range -50<pwm<50
         if (volt > 0.01){
-            pwm_R = volt * 190/12 + 65;
+            pwm_R = volt * 180/12 + 75;
         }else if (volt < -0.01){
-            pwm_R = volt * 190/12 - 65;
+            pwm_R = volt * 180/12 - 75;
         }else{
             pwm_R = 0;
         }
@@ -75,9 +75,9 @@ void BalanceRobotControl::motor_control(){
 
         // Motor doesn't move range -50<pwm<50
         if (volt > 0.01){
-            pwm_L = volt * 190/12 + 65;
+            pwm_L = volt * 180/12 + 75;
         }else if (volt < -0.01){
-            pwm_L = volt * 190/12 - 65;
+            pwm_L = volt * 180/12 - 75;
         }else{
             pwm_L = 0;
         }
@@ -99,7 +99,6 @@ void BalanceRobotControl::motor_control(){
         pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
         pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
     }
-
     driver->drive(driver->A, pwm_L);
     driver->drive(driver->B, pwm_R);
 }
@@ -122,7 +121,6 @@ void BalanceRobotControl::main_loop(){
 
         // Odom pub
         odom_pub_.publish(odom_);
-
         rate.sleep();
     }
     motor_stop();

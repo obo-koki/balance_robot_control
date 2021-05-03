@@ -10,7 +10,6 @@
 
   #### madgwick filter
 
-
   <node pkg="imu_filter_madgwick" type="imu_filter_node"
       name="imu_filter_madgwick" output="screen">
       <param name="use_mag" value="false"/>

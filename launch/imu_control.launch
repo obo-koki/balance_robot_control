@@ -1,29 +1,11 @@
 <!-- ComplementaryFilter launch file -->
 <launch>
 
-  #### Robot Controller
-  <rosparam file="$(find balance_robot_control)/script/control_param.yaml" command="load" ns="balance_robot_control" />
-  <node pkg="balance_robot_control" type="balance_robot_control" name="balance_robot_control" 
-    output="screen">
-  </node>
+  #### Controller
+  <include file="$(find balance_robot_control)/launch/control.launch"/>
 
-  #### IMU Driver
-
-  <node pkg="balance_robot_control" type="mpu6050" name="mpu6050" 
-    output="screen">
-    <remap from="/imu" to="/imu/data_raw"/>
-  </node>
-
-  #### Complementary filter
-
-  <node pkg="imu_complementary_filter" type="complementary_filter_node"
-      name="complementary_filter_gain_node" output="screen">
-    <param name="do_bias_estimation" value="true"/>
-    <param name="do_adaptive_gain" value="true"/>
-    <param name="use_mag" value="false"/>
-    <param name="gain_acc" value="0.01"/>
-    <param name="gain_mag" value="0.01"/>
-  </node>
+  #### IMU
+  <include file="$(find balance_robot_control)/launch/publish_imu_complementary_filtered.launch"/>
 
   #### tf static transformer
   <node pkg="tf" type="static_transform_publisher" name="map_to_odom" args="0 0 0 0 0 0 map odom 10"/>

@@ -64,12 +64,14 @@ class BaseRobotControl_DRV8833{
         int count_R_pre;
         float angle_out_R; //[deg]
         float angle_vel_R; //[deg/s]
+        float angle_vel_R_pre; //[deg/s]
 
         static int count_L;
         int count_L_pre;
         float angle_out_pre_L; //[deg]
         float angle_out_L; //[deg]
         float angle_vel_L; //[deg/s]
+        float angle_vel_L_pre; //[deg/s]
 
         // Wheel velocity
         float vel_R; //[m/s]
