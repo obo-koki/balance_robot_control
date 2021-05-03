@@ -8,6 +8,7 @@
 #include <balance_robot_control/gainConfig.h>
 #include "Filter/LowPassFilter.h"
 #include "Filter/PidControl.h"
+#include "IMU/MadgwickAHRS.h"
 
 class BalanceRobotControl: public BaseRobotControl_DRV8833
 {
@@ -58,6 +59,8 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         LowPassFilter robot_pitch_filter;
         LowPassFilter robot_pitch_vel_filter;
         PidControl robot_pitch_controlPID;
+
+        double MadgwickFilterGain_;
 
     public:
         //Other
