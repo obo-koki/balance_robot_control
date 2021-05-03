@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
   ros::Publisher pub = node.advertise<sensor_msgs::Imu>("imu", 1);
   static tf::TransformBroadcaster br;
   tf::Transform transform;
-  //ros::Rate rate(1);
+  ros::Rate rate(100);
 
   float ax,ay,az,gx,gy,gz,roll,pitch,yaw;
   tf::Quaternion q;
@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
     // Read accelerometer values.
     // At default sensitivity of 2g we need to scale by 16384.
     // Note: at "level" x = y = 0 but z = 1 (i.e. gravity)
-    // But! Imu msg docs say acceleration should be in m/2 so need to *9.807
+    // But! Imu msg docs say acceleration should be in m/2 so need to *9.807/
     //const float la_rescale = 16384.0 / 9.807;
     ax = read_word_2c(fd, ACCEL_X_OUT) / 16384.0;
     ay = read_word_2c(fd, ACCEL_Y_OUT) / 16384.0;
@@ -102,12 +102,15 @@ int main(int argc, char **argv) {
 
     // Pub & Broadcast, sleep.
     pub.publish(imu);
-    time_between_pulish = ros::Time::now() - old;
-    ROS_INFO("Time: %u.09%u", time_between_pulish.sec, time_between_pulish.nsec);
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map","mpu6050"));
-    ros::spinOnce();
-    //rate.sleep();
+
+    ros::Time now = ros::Time::now();
+    time_between_pulish = now - old;
+    //ROS_INFO("IMU Time: %u.%09u", time_between_pulish.sec, time_between_pulish.nsec);
+    //ROS_INFO("Robot Pitch: %f, Robot Pitch vel: %f", -roll, gx);
+    old = now;
+    //ros::spinOnce();
+    rate.sleep();
   }
   return 0;
 }
-

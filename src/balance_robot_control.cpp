@@ -17,6 +17,8 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh, ros::NodeHandle pnh
     robot_pitch_pre = 0;
     robot_pitch_vel = 0;
     robot_pitch_vel_pre = 0;
+    wheel_angle_vel = 0;
+    wheel_angle_vel_pre = 0;
     linear_x = 0;
     target_linear_x = 0;
     target_angular_z = 0;
@@ -32,7 +34,10 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh, ros::NodeHandle pnh
     robot_pitch_controlPID.setOutputLimits(-PWM_RANGE,PWM_RANGE);
     robot_pitch_controlPID.setDirection(false);
     robot_pitch_controlPID.setSetpointRange(20.0 * (M_PI / 180.0));
-    
+
+    // Process period debug
+    imu_sub_old = ros::Time::now();
+    control_old = ros::Time::now();
 }
 
 void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
@@ -43,6 +48,12 @@ void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
     
     double measured_pitch_vel = imu->angular_velocity.y - 3.13;
     robot_pitch_vel = robot_pitch_vel_filter.filter(measured_pitch_vel);
+
+    imu_sub_now = ros::Time::now();
+    ros::Duration time = imu_sub_now - imu_sub_old;
+    //ROS_INFO("IMU sub time: %u.%09u",time.sec, time.nsec);
+    //ROS_INFO("robot_pitch: %lf, robot_pitch_vel: %lf", measured_pitch, measured_pitch_vel);
+    imu_sub_old = imu_sub_now;
 }
 
 void BalanceRobotControl::vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
@@ -122,6 +133,11 @@ void BalanceRobotControl::motor_control(){
     }
     driver->drive(driver->A, pwm_L);
     driver->drive(driver->B, pwm_R);
+
+    control_now = ros::Time::now();
+    ros::Duration time = control_now - control_old;
+    //ROS_INFO("Control time: %u.%09u",time.sec, time.nsec);
+    control_old = control_now;
 }
 void BalanceRobotControl::main_loop(){
     ros::AsyncSpinner spinner(1);

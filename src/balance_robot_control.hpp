@@ -30,6 +30,13 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         double diff_pre;
         double volt;
 
+
+        // Process period debug
+        ros::Time imu_sub_now;
+        ros::Time imu_sub_old;
+        ros::Time control_now;
+        ros::Time control_old;
+
         //Dynamic param
         std::vector<double> control_gain_;
         double pitch_center_;
