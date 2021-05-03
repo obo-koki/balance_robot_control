@@ -58,6 +58,9 @@ int main(int argc, char **argv) {
   float ax,ay,az,gx,gy,gz,roll,pitch,yaw;
   tf::Quaternion q;
 
+  ros::Duration time_between_pulish;
+  ros::Time old = ros::Time::now();
+
   // Publish in loop.
   while(ros::ok()) {
     sensor_msgs::Imu imu;
@@ -99,6 +102,8 @@ int main(int argc, char **argv) {
 
     // Pub & Broadcast, sleep.
     pub.publish(imu);
+    time_between_pulish = ros::Time::now() - old;
+    ROS_INFO("Time: %u.09%u", time_between_pulish.sec, time_between_pulish.nsec);
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map","mpu6050"));
     ros::spinOnce();
     //rate.sleep();
