@@ -25,8 +25,14 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh, ros::NodeHandle pnh
 
 void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
     std::lock_guard<std::mutex> lock(m);
-    robot_pitch = atan(-imu->linear_acceleration.x/(sqrt(pow(imu->linear_acceleration.y,2)+pow(imu->linear_acceleration.z,2))))+pitch_center_;
-    robot_pitch_vel = imu->angular_velocity.y + 3.13;
+    // low path filter
+    double measured_pitch = atan(-imu->linear_acceleration.x/(sqrt(pow(imu->linear_acceleration.y,2)+pow(imu->linear_acceleration.z,2))))+pitch_center_;
+    robot_pitch = a_vel * measured_pitch + (1 - a_vel) * robot_pitch_pre;
+    robot_pitch_pre = robot_pitch;
+    
+    double measured_pitch_vel = imu->angular_velocity.y - 3.13;
+    robot_pitch_vel = a_vel * measured_pitch_vel + (1 - a_vel) * robot_pitch_vel_pre;
+    robot_pitch_vel_pre = robot_pitch_vel;
 }
 
 void BalanceRobotControl::vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
@@ -63,24 +69,26 @@ void BalanceRobotControl::motor_control(){
                 +gain_fai_ * (wheel_angle_vel);
         //      -gain_error_ * diff * 1.0/10.0;
 
-        // Motor doesn't move range -50<pwm<50
-        if (volt > 0.01){
-            pwm_R = volt * 180/12 + 75;
-        }else if (volt < -0.01){
-            pwm_R = volt * 180/12 - 75;
-        }else{
-            pwm_R = 0;
-        }
+        //// Motor doesn't move range -50<pwm<50
+        //if (volt > 0.01){
+            //pwm_R = volt * 180/12 + 75;
+        //}else if (volt < -0.01){
+            //pwm_R = volt * 180/12 - 75;
+        //}else{
+            //pwm_R = 0;
+        //}
+        pwm_R = volt * 255/12;
         pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
 
-        // Motor doesn't move range -50<pwm<50
-        if (volt > 0.01){
-            pwm_L = volt * 180/12 + 75;
-        }else if (volt < -0.01){
-            pwm_L = volt * 180/12 - 75;
-        }else{
-            pwm_L = 0;
-        }
+        //// Motor doesn't move range -50<pwm<50
+        //if (volt > 0.01){
+            //pwm_L = volt * 180/12 + 75;
+        //}else if (volt < -0.01){
+            //pwm_L = volt * 180/12 - 75;
+        //}else{
+            //pwm_L = 0;
+        //}
+        pwm_L = volt * 255/12;
         pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
 
     }else if (use_run_mode_){
