@@ -65,8 +65,9 @@ void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
     //imu_sub_now = ros::Time::now();
     //ros::Duration time = imu_sub_now - imu_sub_old;
     //ROS_INFO("IMU sub time: %u.%09u",time.sec, time.nsec);
-    ROS_INFO("robot_pitch_degree: %lf, robot_pitch_vel: %lf", measured_pitch * 180 / M_PI, measured_pitch_vel);
+    //ROS_INFO("robot_pitch: %lf, robot_pitch_vel: %lf", measured_pitch, measured_pitch_vel);
     //imu_sub_old = imu_sub_now;
+
 }
 
 void BalanceRobotControl::vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
@@ -160,7 +161,7 @@ void BalanceRobotControl::main_loop(){
     while (ros::ok())
     {
         // Print for debug
-        printf("robot_pitch:%3.2f\n",robot_pitch);
+        printf("robot_pitch:%3.2f\n",robot_pitch * 180.0 / M_PI);
         printf("robot_pitch_vel:%3.2f\n",robot_pitch_vel);
         printf("wheel_angle_vel:%3.2f\n",wheel_angle_vel);
         printf("volt:%3.2f\n",volt);

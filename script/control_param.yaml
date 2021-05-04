@@ -44,3 +44,5 @@ control_gain: [-100, -0.32, 0, 0]
 # Mode
 use_safe_mode: true
 use_run_mode: false
+
+MadgwickFilterGain: 0.015
