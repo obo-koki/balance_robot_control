@@ -39,6 +39,7 @@ class BalanceControllerRtData {
 /// These are set at init via yml
 class BalanceControllerConfig {
     public:
+        double OutputToPwmFactor;
         double ControlLoopFrequency;
         double StartingTiltSafetyLimitDegrees;
         double MaxTiltSafetyLimitDegrees;

@@ -44,12 +44,13 @@ BalanceRobotControl::BalanceRobotControl(ros::NodeHandle nh, ros::NodeHandle pnh
 void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
     std::lock_guard<std::mutex> lock(m);
     // low path filter
-    //double measured_pitch = atan(-imu->linear_acceleration.x/(sqrt(pow(imu->linear_acceleration.y,2)+pow(imu->linear_acceleration.z,2))))+pitch_center_;
-    //robot_pitch = robot_pitch_filter.filter(measured_pitch);
+    double measured_pitch = atan(-imu->linear_acceleration.x/(sqrt(pow(imu->linear_acceleration.y,2)+pow(imu->linear_acceleration.z,2))))+pitch_center_;
+    robot_pitch = robot_pitch_filter.filter(measured_pitch);
     
     double measured_pitch_vel = imu->angular_velocity.y - 3.13;
     robot_pitch_vel = robot_pitch_vel_filter.filter(measured_pitch_vel);
 
+    /*
     MadgwickAHRSupdateIMU(MadgwickFilterGain_, imu->angular_velocity.x,
                             imu->angular_velocity.y, imu->angular_velocity.z,
                             imu->linear_acceleration.x, imu->linear_acceleration.y,
@@ -61,6 +62,7 @@ void BalanceRobotControl::imu_callback(const sensor_msgs::Imu::ConstPtr &imu){
     double measured_pitch, measured_row, measured_yaw;
     m.getRPY(measured_yaw, measured_pitch, measured_row);
     robot_pitch = robot_pitch_filter.filter(measured_pitch);
+    */
 
     //imu_sub_now = ros::Time::now();
     //ros::Duration time = imu_sub_now - imu_sub_old;

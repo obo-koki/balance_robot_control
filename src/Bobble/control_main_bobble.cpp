@@ -6,6 +6,6 @@ int main(int argc, char** argv){
     ros::NodeHandle pnh("~");
     BalanceRealController control;
     control.init(nh, pnh);
-    control.main_loop();
+    //control.main_loop();
     return 0;
 }

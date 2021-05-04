@@ -31,7 +31,6 @@ class BalanceRobotControl: public BaseRobotControl_DRV8833
         double diff_pre;
         double volt;
 
-
         // Process period debug
         ros::Time imu_sub_now;
         ros::Time imu_sub_old;

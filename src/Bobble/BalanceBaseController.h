@@ -1,8 +1,3 @@
-/******************************************************************************
- * Document this if it actually works...
- * Mike
-*******************************************************************************/
-
 #ifndef BALANCE_ROBOT_CONTROL_BALANCE_CONTROLLER_H
 #define BALANCE_ROBOT_CONTROL_BALANCE_CONTROLLER_H
 
@@ -14,7 +9,6 @@
 #include <thread>
 #include <mutex>
 
-#include <realtime_tools/realtime_publisher.h>
 #include <ros/node_handle.h>
 #include <geometry_msgs/Twist.h>
 #include "BalanceControllerData.h"
@@ -24,19 +18,17 @@
 class BalanceBaseController {
     public:
         BalanceBaseController(){};
-        ~BalanceBaseController(void);
+        ~BalanceBaseController(){};
         void init(ros::NodeHandle &nh);
         void reset();
         void update();
-        void runSubscriber();
         int getControlMode() { return state.ActiveControlMode; };
 
     protected:
         ros::NodeHandle node_;
         bool run_thread_;
-        realtime_tools::RealtimePublisher<balance_robot_control::BobbleBotStatus>* pub_bobble_status_;
         ros::Subscriber sub_command_;
-        std::mutex control_command_mutex_;
+        std::mutex mutex_;
 	    std::thread* subscriber_thread_;
         BalanceControllerConfig   config;
         BalanceControllerCommands received_commands;
@@ -51,13 +43,13 @@ class BalanceBaseController {
         void setupFilters();
         void setupControllers();
         void runStateLogic();
-        void subscriberCallBack(const balance_robot_control::ControlCommands::ConstPtr &cmd);
-        void cmdVelCallback(const geometry_msgs::Twist& command);
         void idleMode();
         void diagnosticMode();
         void startupMode();
         void balanceMode();
         void unpackParameter(std::string parameterName, double &referenceToParameter, double defaultValue);
+        void unpackParameter(std::string parameterName, float &referenceToParameter, float defaultValue);
+        void unpackParameter(std::string parameterName, int &referenceToParameter, int defaultValue);
         void unpackParameter(std::string parameterName, std::string &referenceToParameter, std::string defaultValue);
         void unpackFlag(std::string parameterName, bool &referenceToFlag, bool defaultValue);
         double limit(double cmd, double max);
@@ -70,7 +62,6 @@ class BalanceBaseController {
         void populateImuData();
         void clearCommandState(BalanceControllerCommands& cmds);
         void populateCommands();
-        void write_controller_status_msg();
         void applyFilters();
         void applySafety();
 };

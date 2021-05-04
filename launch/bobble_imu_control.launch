@@ -2,7 +2,7 @@
 <launch>
 
   #### Controller
-  <include file="$(find balance_robot_control)/launch/control.launch"/>
+  <include file="$(find balance_robot_control)/launch/bobble_control.launch"/>
 
   #### IMU
   <include file="$(find balance_robot_control)/launch/publish_imu_complementary_filtered.launch"/>

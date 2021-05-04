@@ -1,0 +1,11 @@
+<!-- ComplementaryFilter launch file -->
+<launch>
+
+  #### Robot Controller
+  <rosparam file="$(find balance_robot_control)/config/bobble.yaml" command="load" ns="" />
+  <rosparam file="$(find balance_robot_control)/config/balance_robot_control.yaml" command="load" ns="" />
+  <node pkg="balance_robot_control" type="balance_robot_control_bobble" name="balance_robot_control_bobble" 
+    output="screen">
+  </node>
+
+</launch>

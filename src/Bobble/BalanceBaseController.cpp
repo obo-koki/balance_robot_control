@@ -1,12 +1,5 @@
-/******************************************************************************
- * Document this if it actually works
- * MMM
-*******************************************************************************/
-
 #include <sys/mman.h>
-
 #include "BalanceBaseController.h"
-
 
 void BalanceBaseController::init(ros::NodeHandle& nh)
 {
@@ -15,15 +8,6 @@ void BalanceBaseController::init(ros::NodeHandle& nh)
     loadConfig();
     setupFilters();
     setupControllers();
-    pub_bobble_status_ = new realtime_tools::RealtimePublisher<balance_robot_control::BobbleBotStatus>(node_,
-                                                "bobble_balance_controller/bb_controller_status", 1);
-    run_thread_ = true;
-    subscriber_thread_ = new std::thread(&BalanceBaseController::runSubscriber, this);
-}
-
-BalanceBaseController::~BalanceBaseController(void) {
-    run_thread_ = false;
-    subscriber_thread_->join();
 }
 
 void BalanceBaseController::reset()
@@ -55,7 +39,6 @@ void BalanceBaseController::update() {
     outputs.LeftMotorEffortCmd = -outputs.TiltEffort - outputs.HeadingEffort;
     applySafety();
     sendMotorCommands();
-    write_controller_status_msg();
 }
 
 void BalanceBaseController::loadConfig() {
@@ -134,57 +117,6 @@ void BalanceBaseController::setupControllers() {
     pid_controllers.TurningControlPID.setSetpointRange(45.0 * (M_PI / 180.0));
 }
 
-void BalanceBaseController::runSubscriber() {
-    ros::NodeHandle n;
-    ros::Subscriber sub = n.subscribe("/bobble/bobble_balance_controller/bb_cmd", 1,
-                                        &BalanceBaseController::subscriberCallBack, this);
-    ros::Subscriber sub_cmd_vel = n.subscribe("/bobble/bobble_balance_controller/cmd_vel", 1,
-                                        &BalanceBaseController::cmdVelCallback, this);
-
-/*
-    //dynamic param
-    callback_ = boost::bind(&BalanceBaseController::param_callback, this, _1, _2);
-    param_server_.setCallback(callback_);
-*/
-
-    ros::Rate loop_rate(20);
-    while(ros::ok() && run_thread_)
-    {
-        control_command_mutex_.lock();
-        processed_commands.StartupCmd = received_commands.StartupCmd;
-        processed_commands.IdleCmd = received_commands.IdleCmd;
-        processed_commands.DiagnosticCmd = received_commands.DiagnosticCmd;
-        processed_commands.DesiredVelocity = received_commands.DesiredVelocity;
-        processed_commands.DesiredTurnRate = received_commands.DesiredTurnRate;
-        control_command_mutex_.unlock();
-
-        loop_rate.sleep();
-    }
-    sub.shutdown();
-    sub_cmd_vel.shutdown();
-}
-
-void BalanceBaseController::subscriberCallBack(const balance_robot_control::ControlCommands::ConstPtr &cmd) {
-    received_commands.StartupCmd = cmd->StartupCmd;
-    received_commands.IdleCmd = cmd->IdleCmd;
-    received_commands.DiagnosticCmd = cmd->DiagnosticCmd;
-}
-
-void BalanceBaseController::cmdVelCallback(const geometry_msgs::Twist& command) {
-    received_commands.DesiredVelocity = command.linear.x;
-    received_commands.DesiredTurnRate = command.angular.z;
-}
-
-/*
-void BalanceBaseController::param_callback(const balance_robot_control::gainConfig& gain, uint32_t level){
-    ROS_INFO("Received dynamic param tilt: %lf, tilt dot: %lf", config.TiltControlKp, config.TiltControlKd);
-    config.TiltControlKp = gain.TiltControlKp;
-    pid_controllers.TiltControlPID.setP(config.TiltControlKp);
-    config.TiltControlKd = gain.TiltControlKd;
-    pid_controllers.TiltControlPID.setD(config.TiltControlKd, 0);
-}
-*/
-
 void BalanceBaseController::clearCommandState(BalanceControllerCommands& cmds)
 {
     cmds.StartupCmd = false;
@@ -201,13 +133,13 @@ void BalanceBaseController::populateCommands()
     /// Load processed commands into the controller state.
     /// Lock mutex to prevent subscriber from writing to the controller
     /// state.
-    control_command_mutex_.lock();
-    state.Cmds.StartupCmd = processed_commands.StartupCmd;
-    state.Cmds.IdleCmd = processed_commands.IdleCmd;
-    state.Cmds.DiagnosticCmd = processed_commands.DiagnosticCmd;
-    state.Cmds.DesiredVelocityRaw = processed_commands.DesiredVelocity * config.VelocityCmdScale;
-    state.Cmds.DesiredTurnRateRaw = processed_commands.DesiredTurnRate * config.TurnCmdScale;
-    control_command_mutex_.unlock();
+    mutex_.lock();
+    state.Cmds.StartupCmd = received_commands.StartupCmd;
+    state.Cmds.IdleCmd = received_commands.IdleCmd;
+    state.Cmds.DiagnosticCmd = received_commands.DiagnosticCmd;
+    state.Cmds.DesiredVelocityRaw = received_commands.DesiredVelocity * config.VelocityCmdScale;
+    state.Cmds.DesiredTurnRateRaw = received_commands.DesiredTurnRate * config.TurnCmdScale;
+    mutex_.unlock();
 }
 
 void BalanceBaseController::applyFilters()
@@ -297,33 +229,6 @@ void BalanceBaseController::balanceMode() {
     }
 }
 
-void BalanceBaseController::write_controller_status_msg() {
-    if(pub_bobble_status_->trylock()) {
-        pub_bobble_status_->msg_.ControlMode = state.ActiveControlMode;
-        pub_bobble_status_->msg_.MeasuredTiltDot = state.MeasuredTiltDot * (180.0 / M_PI);
-        pub_bobble_status_->msg_.MeasuredTurnRate = state.MeasuredTurnRate * (180.0 / M_PI);
-        pub_bobble_status_->msg_.FilteredTiltDot = state.FilteredTiltDot * (180.0 / M_PI);
-        pub_bobble_status_->msg_.FilteredTurnRate = state.FilteredTurnRate * (180.0 / M_PI);
-        pub_bobble_status_->msg_.Tilt = state.Tilt * (180.0 / M_PI);
-        pub_bobble_status_->msg_.TiltRate = state.TiltDot * (180.0 / M_PI);
-        pub_bobble_status_->msg_.Heading = state.Heading * (180.0 / M_PI);
-        pub_bobble_status_->msg_.TurnRate = state.TurnRate * (180.0 / M_PI);
-        pub_bobble_status_->msg_.ForwardVelocity = state.ForwardVelocity;
-        pub_bobble_status_->msg_.DesiredVelocity = state.Cmds.DesiredVelocity;
-        pub_bobble_status_->msg_.DesiredTilt = state.DesiredTilt * (180.0 / M_PI);
-        pub_bobble_status_->msg_.DesiredTurnRate = state.Cmds.DesiredTurnRate * (180.0 / M_PI);
-        pub_bobble_status_->msg_.LeftMotorPosition = state.MeasuredLeftMotorPosition * (180.0 / M_PI);
-        pub_bobble_status_->msg_.LeftMotorVelocity = state.MeasuredLeftMotorVelocity * (180.0 / M_PI);
-        pub_bobble_status_->msg_.RightMotorPosition = state.MeasuredRightMotorPosition * (180.0 / M_PI);
-        pub_bobble_status_->msg_.RightMotorVelocity = state.MeasuredRightMotorVelocity * (180.0 / M_PI);
-        pub_bobble_status_->msg_.TiltEffort = outputs.TiltEffort;
-        pub_bobble_status_->msg_.HeadingEffort = outputs.HeadingEffort;
-        pub_bobble_status_->msg_.LeftMotorEffortCmd = outputs.LeftMotorEffortCmd;
-        pub_bobble_status_->msg_.RightMotorEffortCmd = outputs.RightMotorEffortCmd;
-        pub_bobble_status_->unlockAndPublish();
-    }
-}
-
 void BalanceBaseController::unpackParameter(std::string parameterName, double &referenceToParameter,
                                                 double defaultValue) {
     if (!node_.getParam(parameterName, referenceToParameter)) {
@@ -343,6 +248,28 @@ void BalanceBaseController::unpackParameter(std::string parameterName, std::stri
                     parameterName.c_str(),
                     node_.getNamespace().c_str(),
                     defaultValue.c_str());
+    }
+}
+
+void BalanceBaseController::unpackParameter(std::string parameterName, int &referenceToParameter, int defaultValue)
+{
+    if (!node_.getParam(parameterName, referenceToParameter)) {
+        referenceToParameter = defaultValue;
+        ROS_ERROR("%s not set for (namespace: %s) using %s.",
+                    parameterName.c_str(),
+                    node_.getNamespace().c_str(),
+                    defaultValue);
+    }
+}
+
+void BalanceBaseController::unpackParameter(std::string parameterName, float &referenceToParameter, float defaultValue)
+{
+    if (!node_.getParam(parameterName, referenceToParameter)) {
+        referenceToParameter = defaultValue;
+        ROS_ERROR("%s not set for (namespace: %s) using %s.",
+                    parameterName.c_str(),
+                    node_.getNamespace().c_str(),
+                    defaultValue);
     }
 }
 

@@ -1,4 +1,5 @@
 #include <sys/mman.h>
+#include <unistd.h>
 #include "BalanceRealController.h"
 
 int BalanceRealController::pi;
@@ -16,48 +17,44 @@ void BalanceRealController::init(ros::NodeHandle nh, ros::NodeHandle pnh){
     set_driver(pnh);
     BalanceBaseController::setupFilters();
     BalanceBaseController::setupControllers();
-    pub_bobble_status_ = new realtime_tools::RealtimePublisher<balance_robot_control::BobbleBotStatus>(node_,
-                                                "bobble_balance_controller/bb_controller_status", 1);
-    run_thread_ = true;
-    subscriber_thread_ = new std::thread(&BalanceBaseController::runSubscriber, this);
+
+    sub = node_.subscribe("bobble/start_cmd", 1,
+                                &BalanceRealController::subscriberCallBack, this);
+    sub_cmd_vel = node_.subscribe("/bobble/cmd_vel", 1,
+                                &BalanceRealController::cmdVelCallback, this);
+
     sub_imu_sensor_ = node_.subscribe("/imu/data", 1, &BalanceRealController::imuCB, this);
     process_timer_ = node_.createWallTimer(ros::WallDuration(MAIN_PROCESS_PERIOD),&BalanceRealController::update, this);
+    pub_timer_ = node_.createWallTimer(ros::WallDuration(PUBLISH_PERIOD), &BalanceRealController::publish, this);
+    
+    //dynamic param
+    callback_ = boost::bind(&BalanceRealController::param_callback, this, _1, _2);
+    param_server_.setCallback(callback_);
+    ros::spin();
 }
 
 void BalanceRealController::set_driver(ros::NodeHandle pnh){
     // get param
-    pnh.param<int>("EN_R_A", EN_R_A, 23); //pnh.param<type>("param name", param_variable, default value);
-    pnh.param<int>("EN_R_B", EN_R_B, 24);
-    pnh.param<int>("EN_L_A", EN_L_A, 17);
-    pnh.param<int>("EN_L_B", EN_L_B, 27);
+    BalanceBaseController::unpackParameter("EN_R_A", EN_R_A, 23); //pnh.param<type>("param name", param_variable, default value);
+    BalanceBaseController::unpackParameter("EN_R_B", EN_R_B, 24);
+    BalanceBaseController::unpackParameter("EN_L_A", EN_L_A, 17);
+    BalanceBaseController::unpackParameter("EN_L_B", EN_L_B, 27);
 
-    pnh.param<int>("PULSE_NUM", PULSE_NUM, 11);
-    pnh.param<int>("REDUCTION_RATIO", REDUCTION_RATIO, 90);
+    BalanceBaseController::unpackParameter("PULSE_NUM", PULSE_NUM, 11);
+    BalanceBaseController::unpackParameter("REDUCTION_RATIO", REDUCTION_RATIO, 90);
 
-    pnh.param<int>("MOTOR_DRIVER_RI1", MOTOR_DRIVER_RI1, 12);
-    pnh.param<int>("MOTOR_DRIVER_RI2", MOTOR_DRIVER_RI2, 25);
+    BalanceBaseController::unpackParameter("MOTOR_DRIVER_RI1", MOTOR_DRIVER_RI1, 12);
+    BalanceBaseController::unpackParameter("MOTOR_DRIVER_RI2", MOTOR_DRIVER_RI2, 25);
 
-    pnh.param<int>("MOTOR_DRIVER_LI1", MOTOR_DRIVER_LI1, 13);
-    pnh.param<int>("MOTOR_DRIVER_LI2", MOTOR_DRIVER_LI2, 26);
+    BalanceBaseController::unpackParameter("MOTOR_DRIVER_LI1", MOTOR_DRIVER_LI1, 13);
+    BalanceBaseController::unpackParameter("MOTOR_DRIVER_LI2", MOTOR_DRIVER_LI2, 26);
 
-    pnh.param<int>("MOTOR_FREQ", MOTOR_FREQ, 50000);
+    BalanceBaseController::unpackParameter("MOTOR_FREQ", MOTOR_FREQ, 50000);
 
-    pnh.param<int>("PWM_RANGE", PWM_RANGE, 255);
+    BalanceBaseController::unpackParameter("PWM_RANGE", PWM_RANGE, 255);
 
-    pnh.param<float>("KP_R", KP_R, 3.0);
-    pnh.param<float>("KI_R", KI_R, 1.0);
-    pnh.param<float>("KD_R", KD_R, 1.0);
-
-    pnh.param<float>("KP_L", KP_L, 3.0);
-    pnh.param<float>("KI_L", KI_L, 1.0);
-    pnh.param<float>("KD_L", KD_L, 1.0);
-
-    pnh.param<float>("WHEEL_DIA", WHEEL_DIA, 0.066);
-    pnh.param<float>("WHEEL_DIST", WHEEL_DIST, 0.180);
-
-    pnh.param<float>("MAIN_PROCESS_PERIOD", MAIN_PROCESS_PERIOD, 0.0005);
-    pnh.param<float>("IMU_MEASURED_PERIOD", IMU_MEASURED_PERIOD, 0.0005);
-    pnh.param<float>("VEL_MEASURED_PERIOD", VEL_MEASURED_PERIOD, 0.0005);
+    BalanceBaseController::unpackParameter("MAIN_PROCESS_PERIOD", MAIN_PROCESS_PERIOD, 0.002);
+    BalanceBaseController::unpackParameter("PUBLISH_PERIOD", PUBLISH_PERIOD, 0.05);
 
     count_turn_en = 4 * PULSE_NUM;
     count_turn_out = count_turn_en * REDUCTION_RATIO;
@@ -78,6 +75,7 @@ void BalanceRealController::set_driver(ros::NodeHandle pnh){
         ROS_ERROR("wiringPi Initialize Error");
         exit(1);
     }
+
     pinMode(EN_R_A, INPUT);
     pinMode(EN_R_B, INPUT);
     wiringPiISR(EN_R_A, INT_EDGE_BOTH, &encoder_count_R_A);
@@ -91,23 +89,10 @@ void BalanceRealController::set_driver(ros::NodeHandle pnh){
     //Initialize Encoder count
     count_R = 0;
     count_R_pre = 0;
-    angle_out_R = 0.0; //[deg]
-    angle_vel_R = 0.0; //[deg/s]
 
     count_L = 0;
     count_L_pre = 0;
-    angle_out_L = 0.0; //[deg]
-    angle_vel_L = 0.0; //[deg/s]
 
-    //Initialize Wheel velocity
-    vel_R = vel_R_pre = vel_R_fil = 0.0; //[m/s]
-    target_vel_R = 0.0; //[m/s]
-    pwm_R = 0.0; // 0 ~ PWM_RANGE
-
-    vel_L = vel_L_pre = vel_L_fil = 0.0; //[m/s]
-    target_vel_L = 0.0; //[m/s]
-    pwm_L = 0.0; // 0 ~ PWM_RANGE
-    
     //Initialize Odometry
     odom_x = 0.0; //[m]
     odom_y = 0.0; //[m]
@@ -115,6 +100,7 @@ void BalanceRealController::set_driver(ros::NodeHandle pnh){
 }
 
 void BalanceRealController::loadConfig() {
+    BalanceBaseController::unpackParameter("OutputToPwmFactor", config.OutputToPwmFactor, 800.0);
     BalanceBaseController::loadConfig();
 }
 
@@ -126,16 +112,37 @@ void BalanceRealController::starting() {
 }
 
 void BalanceRealController::update(const ros::WallTimerEvent &e){
+    mutex_.lock();
     /// Reset the quaternion every time we go to idle in sim
     if (state.ActiveControlMode == ControlModes::IDLE) {
         q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;
     }
     BalanceBaseController::update();
+    mutex_.unlock();
+}
+
+void BalanceRealController::publish(const ros::WallTimerEvent &e){
+    mutex_.lock();
+    // Print for debug
+    printf("robot_pitch:%3.2f\n",state.Tilt * 180.0 / M_PI);
+    printf("robot_pitch_vel:%3.2f\n",state.TiltDot);
+    printf("【Motor_R】count:%i,angle_vel_R:%3.2f,pwm_R:%3.2f\n", 
+    count_R, state.MeasuredRightMotorVelocity,outputs.RightMotorEffortCmd);
+    printf("【Motor_L】count:%i,angle_vel_L:%3.2f,pwm_L:%3.2f\n", 
+    count_L, state.MeasuredLeftMotorVelocity, outputs.LeftMotorEffortCmd);
+    printf("\n");
+
+    // Odom pub
+    //odom_pub_.publish(odom_);
+    mutex_.unlock();
 }
 
 void BalanceRealController::imuCB(const sensor_msgs::Imu::ConstPtr &imuData) {
     state.MeasuredTiltDot = imuData->angular_velocity.y;
     state.MeasuredTurnRate = imuData->angular_velocity.z;
+    state.MeasuredTilt = atan(-imuData->linear_acceleration.x/(sqrt(pow(imuData->linear_acceleration.y,2)+pow(imuData->linear_acceleration.z,2))));//+pitch_center_;
+    //ROS_INFO("Subscribe Imu info");
+    /*
     MadgwickAHRSupdateIMU(config.MadgwickFilterGain, imuData->angular_velocity.x,
                             imuData->angular_velocity.y, imuData->angular_velocity.z,
                             imuData->linear_acceleration.x, imuData->linear_acceleration.y,
@@ -144,6 +151,27 @@ void BalanceRealController::imuCB(const sensor_msgs::Imu::ConstPtr &imuData) {
     tf::Matrix3x3 m(q);
     m.getRPY(state.MeasuredHeading, state.MeasuredTilt, state.MeasuredRoll);
     state.MeasuredTilt *= -1.0;
+    */
+}
+
+void BalanceRealController::subscriberCallBack(const balance_robot_control::ControlCommands::ConstPtr &cmd) {
+    received_commands.StartupCmd = cmd->StartupCmd;
+    received_commands.IdleCmd = cmd->IdleCmd;
+    received_commands.DiagnosticCmd = cmd->DiagnosticCmd;
+}
+
+void BalanceRealController::cmdVelCallback(const geometry_msgs::Twist& command) {
+    //ROS_INFO("Subscribe cmd vel");
+    received_commands.DesiredVelocity = command.linear.x;
+    received_commands.DesiredTurnRate = command.angular.z;
+}
+
+void BalanceRealController::param_callback(const balance_robot_control::gain_bobbleConfig& gain, uint32_t level){
+    ROS_INFO("Received");
+    config.TiltControlKp = gain.TiltControlKp;
+    pid_controllers.TiltControlPID.setP(gain.TiltControlKp);
+    config.TiltControlKd = gain.TiltControlKd;
+    pid_controllers.TiltControlPID.setD(gain.TiltControlKd, 0.0);
 }
 
 void BalanceRealController::estimateState(){
@@ -151,17 +179,15 @@ void BalanceRealController::estimateState(){
     state.MeasuredLeftMotorPosition = 0.0;
     state.MeasuredRightMotorPosition = 0.0;
     // Measure motor vel from encoder
-    angle_vel_L = (360.0 * (count_L - count_L_pre)/ count_turn_out / MAIN_PROCESS_PERIOD);
+    state.MeasuredLeftMotorVelocity = (360.0 * (count_L - count_L_pre)/ count_turn_out / MAIN_PROCESS_PERIOD);
     count_L_pre = count_L;
-    angle_vel_R = (360.0 * (count_R - count_R_pre)/ count_turn_out / MAIN_PROCESS_PERIOD);
+    state.MeasuredRightMotorVelocity= (360.0 * (count_R - count_R_pre)/ count_turn_out / MAIN_PROCESS_PERIOD);
     count_R_pre = count_R;
-    state.MeasuredLeftMotorVelocity = angle_vel_L;
-    state.MeasuredRightMotorVelocity = angle_vel_R;
 }
 
 void BalanceRealController::sendMotorCommands(){
-    driver->drive(driver->A, outputs.LeftMotorEffortCmd);
-    driver->drive(driver->B, outputs.RightMotorEffortCmd);
+    driver->drive(driver->A, outputs.LeftMotorEffortCmd * config.OutputToPwmFactor);
+    driver->drive(driver->B, outputs.RightMotorEffortCmd * config.OutputToPwmFactor);
 }
 
 void BalanceRealController::encoder_count_R_A(){
@@ -194,23 +220,4 @@ void BalanceRealController::encoder_count_L_B(){
     }else{
         count_L --;
     }
-}
-
-void BalanceRealController::main_loop(){
-    ros::Rate rate(5);
-    while (ros::ok())
-    {
-        // Print for debug
-        printf("robot_pitch:%3.2f\n",state.Tilt * 180.0 / M_PI);
-        printf("robot_pitch_vel:%3.2f\n",state.TiltDot);
-        printf("【Motor_R】count:%i,angle_vel_R:%3.2f,pwm_R:%3.2f\n", 
-        count_R, angle_vel_R,outputs.RightMotorEffortCmd);
-        printf("【Motor_R】count:%i,angle_vel_R:%3.2f,pwm_R:%3.2f\n", 
-        count_L, angle_vel_L, outputs.LeftMotorEffortCmd);
-
-        // Odom pub
-        //odom_pub_.publish(odom_);
-        rate.sleep();
-    }
-    reset();
 }
