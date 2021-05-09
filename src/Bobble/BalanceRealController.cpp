@@ -18,19 +18,24 @@ void BalanceRealController::init(ros::NodeHandle nh, ros::NodeHandle pnh){
     BalanceBaseController::setupFilters();
     BalanceBaseController::setupControllers();
 
-    sub = node_.subscribe("bobble/start_cmd", 1,
+    sub_cmd = node_.subscribe("bobble/start_cmd", 1,
                                 &BalanceRealController::subscriberCallBack, this);
     sub_cmd_vel = node_.subscribe("/bobble/cmd_vel", 1,
                                 &BalanceRealController::cmdVelCallback, this);
 
     sub_imu_sensor_ = node_.subscribe("/imu/data", 1, &BalanceRealController::imuCB, this);
-    process_timer_ = node_.createWallTimer(ros::WallDuration(MAIN_PROCESS_PERIOD),&BalanceRealController::update, this);
-    pub_timer_ = node_.createWallTimer(ros::WallDuration(PUBLISH_PERIOD), &BalanceRealController::publish, this);
+    ROS_INFO("INIT");
+
+    process_timer_ = node_.createWallTimer(ros::WallDuration(1.0/config.ControlLoopFrequency),&BalanceRealController::update, this);
+    pub_timer_ = node_.createWallTimer(ros::WallDuration(1.0/config.PublishLoopFrequency), &BalanceRealController::publish, this);
     
+    //process_timer_ = node_.createWallTimer(ros::WallDuration(MAIN_PROCESS_PERIOD),&BalanceRealController::update, this);
+    //pub_timer_ = node_.createWallTimer(ros::WallDuration(PUBLISH_PERIOD), &BalanceRealController::publish, this);
     //dynamic param
     callback_ = boost::bind(&BalanceRealController::param_callback, this, _1, _2);
     param_server_.setCallback(callback_);
     ros::spin();
+    stopMotor();
 }
 
 void BalanceRealController::set_driver(ros::NodeHandle pnh){
@@ -52,9 +57,6 @@ void BalanceRealController::set_driver(ros::NodeHandle pnh){
     BalanceBaseController::unpackParameter("MOTOR_FREQ", MOTOR_FREQ, 50000);
 
     BalanceBaseController::unpackParameter("PWM_RANGE", PWM_RANGE, 255);
-
-    BalanceBaseController::unpackParameter("MAIN_PROCESS_PERIOD", MAIN_PROCESS_PERIOD, 0.002);
-    BalanceBaseController::unpackParameter("PUBLISH_PERIOD", PUBLISH_PERIOD, 0.05);
 
     count_turn_en = 4 * PULSE_NUM;
     count_turn_out = count_turn_en * REDUCTION_RATIO;
@@ -100,7 +102,6 @@ void BalanceRealController::set_driver(ros::NodeHandle pnh){
 }
 
 void BalanceRealController::loadConfig() {
-    BalanceBaseController::unpackParameter("OutputToPwmFactor", config.OutputToPwmFactor, 800.0);
     BalanceBaseController::loadConfig();
 }
 
@@ -112,13 +113,13 @@ void BalanceRealController::starting() {
 }
 
 void BalanceRealController::update(const ros::WallTimerEvent &e){
-    mutex_.lock();
+    //mutex_.lock();
     /// Reset the quaternion every time we go to idle in sim
     if (state.ActiveControlMode == ControlModes::IDLE) {
         q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;
     }
     BalanceBaseController::update();
-    mutex_.unlock();
+    //mutex_.unlock();
 }
 
 void BalanceRealController::publish(const ros::WallTimerEvent &e){
@@ -127,9 +128,9 @@ void BalanceRealController::publish(const ros::WallTimerEvent &e){
     printf("robot_pitch:%3.2f\n",state.Tilt * 180.0 / M_PI);
     printf("robot_pitch_vel:%3.2f\n",state.TiltDot);
     printf("【Motor_R】count:%i,angle_vel_R:%3.2f,pwm_R:%3.2f\n", 
-    count_R, state.MeasuredRightMotorVelocity,outputs.RightMotorEffortCmd);
+    count_R, state.MeasuredRightMotorVelocity,limit(outputs.RightMotorEffortCmd*config.OutputToPwmFactor,PWM_RANGE));
     printf("【Motor_L】count:%i,angle_vel_L:%3.2f,pwm_L:%3.2f\n", 
-    count_L, state.MeasuredLeftMotorVelocity, outputs.LeftMotorEffortCmd);
+    count_L, state.MeasuredLeftMotorVelocity, limit(outputs.LeftMotorEffortCmd*config.OutputToPwmFactor,PWM_RANGE));
     printf("\n");
 
     // Odom pub
@@ -138,9 +139,9 @@ void BalanceRealController::publish(const ros::WallTimerEvent &e){
 }
 
 void BalanceRealController::imuCB(const sensor_msgs::Imu::ConstPtr &imuData) {
-    state.MeasuredTiltDot = imuData->angular_velocity.y;
+    state.MeasuredTiltDot = imuData->angular_velocity.y + config.TiltDotOffset;
     state.MeasuredTurnRate = imuData->angular_velocity.z;
-    state.MeasuredTilt = atan(-imuData->linear_acceleration.x/(sqrt(pow(imuData->linear_acceleration.y,2)+pow(imuData->linear_acceleration.z,2))));//+pitch_center_;
+    state.MeasuredTilt = atan(-imuData->linear_acceleration.x/(sqrt(pow(imuData->linear_acceleration.y,2)+pow(imuData->linear_acceleration.z,2))))+config.TiltOffset;
     //ROS_INFO("Subscribe Imu info");
     /*
     MadgwickAHRSupdateIMU(config.MadgwickFilterGain, imuData->angular_velocity.x,
@@ -167,27 +168,38 @@ void BalanceRealController::cmdVelCallback(const geometry_msgs::Twist& command) 
 }
 
 void BalanceRealController::param_callback(const balance_robot_control::gain_bobbleConfig& gain, uint32_t level){
-    ROS_INFO("Received");
+    ROS_INFO("Dynamic Config Received");
     config.TiltControlKp = gain.TiltControlKp;
     pid_controllers.TiltControlPID.setP(gain.TiltControlKp);
     config.TiltControlKd = gain.TiltControlKd;
     pid_controllers.TiltControlPID.setD(gain.TiltControlKd, 0.0);
+    config.OutputToPwmFactor = gain.OutputToPwmFactor;
+    config.TiltOffset = gain.TiltOffset;
+    config.TiltDotOffset = gain.TiltDotOffset;
 }
+
 
 void BalanceRealController::estimateState(){
     // Position is not used by pendulum
     state.MeasuredLeftMotorPosition = 0.0;
     state.MeasuredRightMotorPosition = 0.0;
     // Measure motor vel from encoder
-    state.MeasuredLeftMotorVelocity = (360.0 * (count_L - count_L_pre)/ count_turn_out / MAIN_PROCESS_PERIOD);
+    state.MeasuredLeftMotorVelocity = (360.0 * (count_L - count_L_pre)/ count_turn_out * config.ControlLoopFrequency);
     count_L_pre = count_L;
-    state.MeasuredRightMotorVelocity= (360.0 * (count_R - count_R_pre)/ count_turn_out / MAIN_PROCESS_PERIOD);
+    state.MeasuredRightMotorVelocity= (360.0 * (count_R - count_R_pre)/ count_turn_out * config.ControlLoopFrequency);
     count_R_pre = count_R;
 }
 
 void BalanceRealController::sendMotorCommands(){
-    driver->drive(driver->A, outputs.LeftMotorEffortCmd * config.OutputToPwmFactor);
-    driver->drive(driver->B, outputs.RightMotorEffortCmd * config.OutputToPwmFactor);
+    double output_L = outputs.LeftMotorEffortCmd * config.OutputToPwmFactor;
+    double output_R = outputs.RightMotorEffortCmd * config.OutputToPwmFactor;
+    driver->drive(driver->A, limit(output_L, PWM_RANGE));
+    driver->drive(driver->B, limit(output_R, PWM_RANGE));
+}
+
+void BalanceRealController::stopMotor(){
+    driver->drive(driver->A, 0);
+    driver->drive(driver->B, 0);
 }
 
 void BalanceRealController::encoder_count_R_A(){

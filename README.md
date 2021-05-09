@@ -2,7 +2,9 @@
 倒立振子移動ロボットのコントロールプログラム
 
 # Requirement
+pigpiod -> raspiのGPIO操作用ライブラリ
 
+wiringPi -> raspiのGPIO操作用ライブラリ
 # Installation
 IMU
 
@@ -12,27 +14,40 @@ Lidar
 
 https://github.com/Vidicon/camsense_driver
 # Usage
+## 自作コントローラ
+pigpiodの有効化（初期動作時のみ必要）
 
-ロボットコントローラーの立ち上げ
 ```
-roslaunch balance_robot_control balance_robot_control.launch
+sudo pigpiod
 ```
-IMU(mpu6050) 立ち上げ
+ロボットコントローラー + IMUノードの立ち上げ
 ```
-// c++
-roslaunch balance_robot_control publish_imu_filtered_cpp.launch
-// python
-roslaunch balance_robot_control publish_imu_filtered_py.launch
+roslaunch balance_robot_control imu_control.launch
 ```
 Lidar 立ち上げ
 ```
 roslaunch balance_robot_control publish_lidar.launch
 ```
-表示用 rviz 立ち上げ
-```
-roslaunch balance_robot_control display.launch
-```
 全部（ロボットコントローラー、IMU、Lidar）+ 表示用 rviz 立ち上げ
 ```
 roslaunch balance_robot_control all_display.launch
 ```
+動的パラメータ(dynamic_param)のGUIでの調整
+```
+rosrun rqt_reconfigure rqt_reconfigure
+```
+
+## 参考コントローラ(bobble)
+ロボットコントローラー + IMUノードの立ち上げ
+```
+roslaunch balance_robot_control bobble_imu_control.launch
+```
+
+# Reference
+シミュレーション用プログラム
+
+https://github.com/obo-koki/balance_robot_description
+
+参考プログラム(bobble_controllers)
+
+https://github.com/super-owesome/bobble_controllers

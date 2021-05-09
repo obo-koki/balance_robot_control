@@ -15,7 +15,7 @@ void BalanceBaseController::reset()
     clearCommandState(processed_commands);
     clearCommandState(received_commands);
     clearCommandState(state.Cmds);
-    state.ActiveControlMode = ControlModes::IDLE;
+    state.ActiveControlMode = ControlModes::STARTUP;
     state.ForwardVelocity = 0.0;
     state.DesiredTilt = 0.0;
     state.Tilt = 0.0;
@@ -42,7 +42,9 @@ void BalanceBaseController::update() {
 }
 
 void BalanceBaseController::loadConfig() {
+    unpackParameter("OutputToPwmFactor", config.OutputToPwmFactor, 800.0);
     unpackParameter("ControlLoopFrequency", config.ControlLoopFrequency, 500.0);
+    unpackParameter("PublishLoopFrequency", config.PublishLoopFrequency, 10.0);
     unpackParameter("StartingTiltSafetyLimitDegrees", config.StartingTiltSafetyLimitDegrees, 4.0);
     unpackParameter("MaxTiltSafetyLimitDegrees", config.MaxTiltSafetyLimitDegrees, 20.0);
     unpackParameter("ControllerEffortMax", config.ControllerEffortMax, 0.4);
