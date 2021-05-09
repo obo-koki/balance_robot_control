@@ -37,6 +37,7 @@ WHEEL_DIST: 0.180 #[m]
 MAIN_PROCESS_PERIOD: 0.01 #[sec]
 IMU_MEASURED_PERIOD: 0.01 #[sec]
 VEL_MEASURED_PERIOD: 0.002 #[sec]
+PUBLISH_PERIOD: 0.1 #[sec]
 
 # Control gain
 control_gain: [-100, -0.32, 0, 0]

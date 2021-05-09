@@ -41,6 +41,7 @@ class BalanceControllerConfig {
     public:
         double OutputToPwmFactor;
         double ControlLoopFrequency;
+        double PublishLoopFrequency;
         double StartingTiltSafetyLimitDegrees;
         double MaxTiltSafetyLimitDegrees;
         double ControllerEffortMax;

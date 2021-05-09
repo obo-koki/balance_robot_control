@@ -43,6 +43,7 @@ class BalanceRealController : public BalanceBaseController
         virtual void loadConfig();
         virtual void estimateState();
         virtual void sendMotorCommands();
+        virtual void stopMotor();
 
         //Encoder
         static int EN_R_A; //Green
@@ -105,7 +106,7 @@ class BalanceRealController : public BalanceBaseController
 
     private:
         ros::Subscriber sub_imu_sensor_;
-        ros::Subscriber sub;
+        ros::Subscriber sub_cmd;
         ros::Subscriber sub_cmd_vel;
         void imuCB(const sensor_msgs::Imu::ConstPtr &imuData);
         void subscriberCallBack(const balance_robot_control::ControlCommands::ConstPtr &cmd);
