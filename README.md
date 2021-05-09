@@ -50,4 +50,4 @@ https://github.com/obo-koki/balance_robot_description
 
 参考プログラム(bobble_controllers)
 
-https://github.com/obo-koki/bobble_controllers
+https://github.com/super-owesome/bobble_controllers
