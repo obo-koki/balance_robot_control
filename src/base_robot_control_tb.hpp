@@ -16,84 +16,54 @@
 #include <mutex>
 #include "tb6612.hpp"
 
-//Encoder
-#define EN_R_A 23 //Green
-#define EN_R_B 24 //Yellow
-
-#define EN_L_A 17 //Green
-#define EN_L_B 27 //Yellow
-
-#define PULSE_NUM 11 //encoder pulse number
-#define REDUCTION_RATIO 90
-
-#define PROCESS_PERIOD 0.001 //[sec]
-
-//Motor Driver
-//#define MOTOR_DIR_R 25
-//#define MOTOR_PWM_R 12
-
-//#define MOTOR_DIR_L 22
-//#define MOTOR_PWM_L 13
-
-//#define MOTOR_DRIVER_EN 5
-//#define MOTOR_DRIVER_FAULT 6
-
-//Motor Driver TB
-#define MOTOR_DRIVER_RI1 22
-#define MOTOR_DRIVER_RI2 25
-#define MOTOR_PWM_R 12
-
-#define MOTOR_DRIVER_LI1 5
-#define MOTOR_DRIVER_LI2 6
-#define MOTOR_PWM_L 13
-
-//PWM
-#define PWM_RANGE 255 // You can change 25~40000 (default 255)
-#define MOTOR_FREQ 50000 // 50 kHz (= max motor driver freq)
-
-//Odometry
-#define WHEEL_DIA 0.066 //[m]
-#define WHEEL_DIST 0.180 //[m]
-
-//Range of Integral
-#define INTEG_RANGE 100.0
-
-//PID Gain
-/*
-#define KP_R 2.0
-#define KI_R 1.0
-#define KD_R 1.0
-
-#define KP_L 2.0
-#define KI_L 1.0
-#define KD_L 1.0
-*/
-
-//Others
-#define PI 3.1415926535
 
 class TB6612;
 
+#define PI 3.1415926535
+
 class BaseRobotControl_TB{
     protected:
+        //Encoder
+        static int EN_R_A; //Green
+        static int EN_R_B; //Yellow
+
+        static int EN_L_A; //Green
+        static int EN_L_B; //Yellow
+
+        int PULSE_NUM; 
+        int REDUCTION_RATIO;
+
+        //Process period
+        float MAIN_PROCESS_PERIOD; //[sec]
+        float IMU_MEASURED_PERIOD; //[sec]
+        float VEL_MEASURED_PERIOD; //[sec]
+
+        //Motor Driver DB
+        int MOTOR_DRIVER_RI1; 
+        int MOTOR_DRIVER_RI2;
+        int MOTOR_PWM_R;
+        int MOTOR_DRIVER_LI1;
+        int MOTOR_DRIVER_LI2;
+        int MOTOR_PWM_L;
+
+        //PWM
+        int PWM_RANGE; 
+        int MOTOR_FREQ; 
+
+        //Odometry
+        float WHEEL_DIA; //[m]
+        float WHEEL_DIST; //[m]
+
+        //Others
         static int pi;
-        
-        //Motor Driver
-        /**
-        int pin_ain1 = MOTOR_DRIVER_RI1;
-        int pin_ain2 = MOTOR_DRIVER_RI2;
-        int pin_apwm = MOTOR_PWM_R;
-        int pin_bin1 = MOTOR_DRIVER_LI1;
-        int pin_bin2 = MOTOR_DRIVER_LI2;
-        int pin_bpwm = MOTOR_PWM_L;
-        */
+        float INTEG_RANGE;
 
         TB6612* driver;
 
         //Encoder
-        const int count_turn_en = 4 * PULSE_NUM;
-        const int count_turn_out = count_turn_en * REDUCTION_RATIO; //wheel count
-
+        int count_turn_en;
+        int count_turn_out;
+        
         static int count_R;
         int count_R_pre;
         float angle_out_R; //[deg]
@@ -159,7 +129,7 @@ class BaseRobotControl_TB{
         static void encoder_count_L_B();
 
         //ros
-        ros::NodeHandle node_handle_;
+        //ros::NodeHandle node_handle_;
         nav_msgs::Odometry odom_;
         ros::Publisher odom_pub_;
         ros::Publisher vel_pub_R_; // for PID debug
@@ -187,9 +157,9 @@ class BaseRobotControl_TB{
         virtual void motor_control_angular();
 
     public:
-        BaseRobotControl_TB(ros::NodeHandle);
+        BaseRobotControl_TB(ros::NodeHandle, ros::NodeHandle);
         virtual void motor_stop();
-        void main_loop();
+        virtual void main_loop();
         
 };
 

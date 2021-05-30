@@ -1,7 +1,9 @@
 <!-- ComplementaryFilter launch file -->
 <launch>
-
+  ### driver flag  0:DRB833, 1:TB6612
+  <arg name="DRV_FLG" default='0' />
   #### Robot Controller
+  <param name="DRV_FLG" value="$(arg DRV_FLG)"/>
   <rosparam file="$(find balance_robot_control)/config/bobble.yaml" command="load" ns="" />
   <rosparam file="$(find balance_robot_control)/config/balance_robot_control.yaml" command="load" ns="" />
   <node pkg="balance_robot_control" type="balance_robot_control_bobble" name="balance_robot_control_bobble" 

@@ -2,11 +2,55 @@
 #include "tb6612.hpp"
 
 int BaseRobotControl_TB::pi;
+int BaseRobotControl_TB::EN_R_A;
+int BaseRobotControl_TB::EN_R_B;
+int BaseRobotControl_TB::EN_L_A;
+int BaseRobotControl_TB::EN_L_B;
 int BaseRobotControl_TB::count_R;
 int BaseRobotControl_TB::count_L;
 
-BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
+BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh, ros::NodeHandle pnh){
+    // get param
+    pnh.param<int>("EN_R_A", EN_R_A, 23); //pnh.param<type>("param name", param_variable, default value);
+    pnh.param<int>("EN_R_B", EN_R_B, 24);
+    pnh.param<int>("EN_L_A", EN_L_A, 17);
+    pnh.param<int>("EN_L_B", EN_L_B, 27);
 
+    pnh.param<int>("PULSE_NUM", PULSE_NUM, 11);
+    pnh.param<int>("REDUCTION_RATIO", REDUCTION_RATIO, 90);
+
+    pnh.param<int>("MOTOR_DRIVER_RI1_TB", MOTOR_DRIVER_RI1, 22);
+    pnh.param<int>("MOTOR_DRIVER_RI2_TB", MOTOR_DRIVER_RI2, 25);
+    pnh.param<int>("MOTOR_PWM_R", MOTOR_PWM_R, 12);
+    pnh.param<int>("MOTOR_DRIVER_LI1_TB", MOTOR_DRIVER_LI1, 5);
+    pnh.param<int>("MOTOR_DRIVER_LI2_TB", MOTOR_DRIVER_LI2, 6);
+    pnh.param<int>("MOTOR_PWM_L", MOTOR_PWM_L, 13);
+
+    pnh.param<int>("MOTOR_FREQ", MOTOR_FREQ, 50000); // 50 kHz (= max motor driver freq)
+
+    pnh.param<int>("PWM_RANGE", PWM_RANGE, 255); // You can change 25~40000 (default 255)
+
+    pnh.param<float>("KP_R", KP_R, 3.0);
+    pnh.param<float>("KI_R", KI_R, 1.0);
+    pnh.param<float>("KD_R", KD_R, 1.0);
+
+    pnh.param<float>("KP_L", KP_L, 3.0);
+    pnh.param<float>("KI_L", KI_L, 1.0);
+    pnh.param<float>("KD_L", KD_L, 1.0);
+
+    pnh.param<float>("A_VEL", a_vel,0.5);
+    pnh.param<float>("INTEG_RANGE", INTEG_RANGE, 100.0);
+
+    pnh.param<float>("WHEEL_DIA", WHEEL_DIA, 0.065); //[m]
+    pnh.param<float>("WHEEL_DIST", WHEEL_DIST, 0.180); //0.180[m]
+
+    pnh.param<float>("MAIN_PROCESS_PERIOD", MAIN_PROCESS_PERIOD, 0.0005);
+    pnh.param<float>("IMU_MEASURED_PERIOD", IMU_MEASURED_PERIOD, 0.0005);
+    pnh.param<float>("VEL_MEASURED_PERIOD", VEL_MEASURED_PERIOD, 0.0005);
+
+    count_turn_en = 4 * PULSE_NUM;
+    count_turn_out = count_turn_en * REDUCTION_RATIO;
+ 
     // pigpio
     pi = pigpio_start(0,0);
     if ( pi < 0 ){
@@ -22,13 +66,13 @@ BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
     }
 
     //ROS
-    node_handle_ = nh;
     odom_pub_ = nh.advertise<nav_msgs::Odometry>("/odom",5);
     vel_sub_ = nh.subscribe("/cmd_vel", 10, &BaseRobotControl_TB::cmd_vel_callback, this);
     imu_sub_ = nh.subscribe("/imu/data", 10, &BaseRobotControl_TB::imu_callback, this);
-    process_timer_ = nh.createWallTimer(ros::WallDuration(PROCESS_PERIOD),&BaseRobotControl_TB::timer_callback,this);
+    process_timer_ = nh.createWallTimer(ros::WallDuration(MAIN_PROCESS_PERIOD),&BaseRobotControl_TB::timer_callback,this);
 
     //set param
+    /*
     if(nh.hasParam("/KP_VEL_R"))
         nh.getParam("/KP_VEL_R", KP_R);
     if(nh.hasParam("/KI_VEL_R"))
@@ -43,6 +87,7 @@ BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
         nh.getParam("/KD_VEL_L", KD_L);
     if(nh.hasParam("/A_VEL"))
         nh.getParam("/A_VEL", a_vel);
+    */
 
     // For PID debug
     vel_pub_R_ = nh.advertise<geometry_msgs::Twist>("/motor_vel_R",5);
@@ -53,37 +98,6 @@ BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
     PID_sub_L_ = nh.subscribe("/PID_L",10,&BaseRobotControl_TB::PID_L_callback,this);
 
     driver = new TB6612();
-    //GPIO setup -> Encoder
-    /*
-    set_mode(pi, EN_R_A, PI_INPUT);
-    set_mode(pi, EN_R_B, PI_INPUT);
-    callback(pi, EN_R_A, EITHER_EDGE ,&encoder_count_R_A);
-    callback(pi, EN_R_B, EITHER_EDGE ,&encoder_count_R_B);
-
-    set_mode(pi, EN_L_A, PI_INPUT);
-    set_mode(pi, EN_L_B, PI_INPUT);
-    callback(pi, EN_L_A, EITHER_EDGE ,&encoder_count_L_A);
-    callback(pi, EN_L_B, EITHER_EDGE ,&encoder_count_L_B);
-    */
-
-    //GPIO setup -> Motor driver
-    /*
-    set_mode(pi, MOTOR_DRIVER_EN, PI_OUTPUT);
-    gpio_write(pi, MOTOR_DRIVER_EN, PI_HIGH);
-    set_mode(pi, MOTOR_DRIVER_FAULT, PI_INPUT);
-    //callback(pi, MOTOR_DRIVER_FAULT, EITHER_EDGE, &stop_motor);
-
-    set_mode(pi, MOTOR_DIR_R, PI_OUTPUT);
-    gpio_write(pi, MOTOR_DIR_R, PI_LOW);
-    set_PWM_range(pi, MOTOR_PWM_R, PWM_RANGE);
-    set_PWM_frequency(pi, MOTOR_PWM_R, MOTOR_FREQ);
-
-    set_mode(pi, MOTOR_DIR_L, PI_OUTPUT);
-    gpio_write(pi, MOTOR_DIR_L, PI_LOW);
-    set_PWM_range(pi, MOTOR_PWM_L, PWM_RANGE);
-    set_PWM_frequency(pi, MOTOR_PWM_L, MOTOR_FREQ);
-    */
-
     driver->setPinMode(pi, MOTOR_DRIVER_LI1, MOTOR_DRIVER_LI2, MOTOR_PWM_L, MOTOR_DRIVER_RI1, MOTOR_DRIVER_RI2, MOTOR_PWM_R);
 
     pinMode(EN_R_A, INPUT);
@@ -96,23 +110,6 @@ BaseRobotControl_TB::BaseRobotControl_TB(ros::NodeHandle nh){
     wiringPiISR(EN_L_A, INT_EDGE_BOTH, &encoder_count_L_A);
     wiringPiISR(EN_L_B, INT_EDGE_BOTH, &encoder_count_L_B);
 
-    /*
-    //GPIO setup -> Motor driver
-    pinMode(MOTOR_DRIVER_EN, OUTPUT); // 0-> motor start, 1-> motor stop
-    digitalWrite(MOTOR_DRIVER_EN, 1);
-    //wiringPiISR(MOTOR_DRIVER_FAULT, INT_EDGE_RISING, stop_motor); // 0-> motor over-temperture or over-current, 1-> normally 
-
-    pinMode(MOTOR_DIR_R, OUTPUT);
-    digitalWrite(MOTOR_DIR_R, 0);
-    pinMode(MOTOR_PWM_R,PWM_OUTPUT);
-
-    pinMode(MOTOR_DIR_L, OUTPUT);
-    digitalWrite(MOTOR_DIR_L, 0);
-    pinMode(MOTOR_PWM_L,PWM_OUTPUT);
-
-    pwmSetMode(0);
-    pwmSetRange(1024);
-    */
 
     //Initialize Encoder count
     count_R = 0;
@@ -217,8 +214,6 @@ void BaseRobotControl_TB::encoder_count_L_B(int, unsigned int, unsigned int, uns
 
 void BaseRobotControl_TB::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr &vel){
     std::lock_guard<std::mutex> lock(m);
-    //target_vel_R = -(vel->linear.x + vel->angular.z * WHEEL_DIST);
-    //target_vel_L = vel->linear.x - vel->angular.z * WHEEL_DIST;
     target_vel_R = vel->linear.x + vel->angular.z * WHEEL_DIST/2 ;
     target_vel_L = vel->linear.x - vel->angular.z * WHEEL_DIST/2;
     target_angle_vel_R = -target_vel_R / (WHEEL_DIA / 2.0) / (2.0*PI) * 360.0;
@@ -268,9 +263,9 @@ void BaseRobotControl_TB::calc_odom(){
     v_y = (vel_R + vel_L)/2 * std::sin(odom_th);
     v_th = (vel_R - vel_L)/ (2*WHEEL_DIST);
 
-    odom_x = odom_x + v_x * PROCESS_PERIOD * std::cos(odom_th + v_th * PROCESS_PERIOD / 2);
-    odom_y = odom_y + v_y * PROCESS_PERIOD * std::sin(odom_th + v_th * PROCESS_PERIOD / 2);
-    odom_th = odom_th + v_th * PROCESS_PERIOD;
+    odom_x = odom_x + v_x * MAIN_PROCESS_PERIOD * std::cos(odom_th + v_th * MAIN_PROCESS_PERIOD / 2);
+    odom_y = odom_y + v_y * MAIN_PROCESS_PERIOD * std::sin(odom_th + v_th * MAIN_PROCESS_PERIOD / 2);
+    odom_th = odom_th + v_th * MAIN_PROCESS_PERIOD;
 
     geometry_msgs::Quaternion odom_q = tf::createQuaternionMsgFromYaw(odom_th);
     odom_.header.frame_id = "odom";
@@ -289,11 +284,11 @@ void BaseRobotControl_TB::timer_callback(const ros::WallTimerEvent &e){
     //pre_time = time;
     //Motor R
     angle_out_R = calc_angle_output(count_R);
-    angle_vel_R = (360.0 * (count_R - count_R_pre) / count_turn_out / PROCESS_PERIOD);
+    angle_vel_R = (360.0 * (count_R - count_R_pre) / count_turn_out / MAIN_PROCESS_PERIOD);
     count_R_pre = count_R;
     //Motor L
     angle_out_L = calc_angle_output(count_L);
-    angle_vel_L = (360.0 * (count_L - count_L_pre) / count_turn_out / PROCESS_PERIOD);
+    angle_vel_L = (360.0 * (count_L - count_L_pre) / count_turn_out / MAIN_PROCESS_PERIOD);
     count_L_pre = count_L;
 
     //low path filter
@@ -339,31 +334,19 @@ void BaseRobotControl_TB::motor_control(){
 
     // PID
     diff_R = target_vel_R - vel_R;
-    integral_R += (diff_R + diff_pre_R)/2.0*PROCESS_PERIOD;
-    differential_R = (diff_R - diff_pre_R)/PROCESS_PERIOD;
+    integral_R += (diff_R + diff_pre_R)/2.0*MAIN_PROCESS_PERIOD;
+    differential_R = (diff_R - diff_pre_R)/MAIN_PROCESS_PERIOD;
 
     pwm_R = KP_R*diff_R + KI_R*integral_R + KD_R*differential_R;
     pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
 
     diff_L = target_vel_L - vel_L;
-    integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
-    differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
+    integral_L += (diff_L + diff_pre_L)/2.0*MAIN_PROCESS_PERIOD;
+    differential_L = (diff_L - diff_pre_L)/MAIN_PROCESS_PERIOD;
 
     pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
     pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
 
-    // Decide dir by pwm code
-    //dir_R = (pwm_R >=0) ? PI_HIGH : PI_LOW;
-    //dir_L = (pwm_L >=0) ? PI_HIGH : PI_LOW;
-
-    //Write PWM
-    /*
-    gpio_write(pi, MOTOR_DIR_R, dir_R);
-    set_PWM_dutycycle(pi, MOTOR_PWM_R, abs(pwm_R));
-
-    gpio_write(pi, MOTOR_DIR_L, dir_L);
-    set_PWM_dutycycle(pi, MOTOR_PWM_L, abs(pwm_L));
-    */
     driver->drive(driver->A, pwm_L);
     driver->drive(driver->B, pwm_R);
 }
@@ -373,33 +356,21 @@ void BaseRobotControl_TB::motor_control_angular(){
     
     // PID
     diff_R = target_angle_vel_R - angle_vel_R;
-    integral_R += (diff_R + diff_pre_R)/2.0*PROCESS_PERIOD;
+    integral_R += (diff_R + diff_pre_R)/2.0*MAIN_PROCESS_PERIOD;
     integral_R = std::min(std::max((float)(-1* INTEG_RANGE), integral_R), (float)INTEG_RANGE);
-    differential_R = (diff_R - diff_pre_R) / PROCESS_PERIOD;
+    differential_R = (diff_R - diff_pre_R) / MAIN_PROCESS_PERIOD;
 
     pwm_R = KP_R*diff_R + KI_R*integral_R + KD_R*differential_R;
     pwm_R = std::min(std::max(-1*PWM_RANGE,pwm_R),PWM_RANGE);
 
     diff_L = target_angle_vel_L - angle_vel_L;
-    integral_L += (diff_L + diff_pre_L)/2.0*PROCESS_PERIOD;
+    integral_L += (diff_L + diff_pre_L)/2.0*MAIN_PROCESS_PERIOD;
     integral_L = std::min(std::max((float)(-1 * INTEG_RANGE), integral_L), (float)INTEG_RANGE);
-    differential_L = (diff_L - diff_pre_L)/PROCESS_PERIOD;
+    differential_L = (diff_L - diff_pre_L)/MAIN_PROCESS_PERIOD;
 
     pwm_L = KP_L*diff_L + KI_L*integral_L + KD_L*differential_L;
     pwm_L = std::min(std::max(-1*PWM_RANGE,pwm_L),PWM_RANGE);
 
-    // Decide dir by pwm code
-    //dir_R = (pwm_R >=0) ? PI_HIGH : PI_LOW;
-    //dir_L = (pwm_L >=0) ? PI_HIGH : PI_LOW;
-
-    //Write PWM
-    /*
-    gpio_write(pi, MOTOR_DIR_R, dir_R);
-    set_PWM_dutycycle(pi, MOTOR_PWM_R, abs(pwm_R));
-
-    gpio_write(pi, MOTOR_DIR_L, dir_L);
-    set_PWM_dutycycle(pi, MOTOR_PWM_L, abs(pwm_L));
-    */
     driver->drive(driver->A, pwm_L);
     driver->drive(driver->B, pwm_R);
 }

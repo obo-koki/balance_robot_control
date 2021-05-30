@@ -13,10 +13,14 @@
 #include "BalanceBaseController.h"
 #include <tf/transform_datatypes.h>
 #include "../drv8833.hpp"
+#include "../tb6612.hpp"
 #include <wiringPi.h>
 #include <pigpiod_if2.h>
 #include <dynamic_reconfigure/server.h>
 #include <balance_robot_control/gain_bobbleConfig.h>
+
+#define FLG_TB6612 1
+#define FLG_DRV8833 0
 
 class BalanceRealController : public BalanceBaseController
 {
@@ -59,12 +63,15 @@ class BalanceRealController : public BalanceBaseController
         float MAIN_PROCESS_PERIOD; //[sec]
         float PUBLISH_PERIOD;
 
-        //Motor Driver DRV8833
+        //Motor Driver
+        int DRV_FLG; // 1:TB6612 0:DRV8833
+
         int MOTOR_DRIVER_RI1; //Forward pwm
         int MOTOR_DRIVER_RI2; //Backward pwm
-
+        int MOTOR_PWM_R; //for TB6612
         int MOTOR_DRIVER_LI1; //Forward pwm
         int MOTOR_DRIVER_LI2; //Backward pwm
+        int MOTOR_PWM_L; //for TB6612
 
         //PWM
         int PWM_RANGE; 
@@ -76,7 +83,8 @@ class BalanceRealController : public BalanceBaseController
 
         //Others
         static int pi;
-        DRV8833* driver;
+        DRV8833* driver_drv;
+        TB6612 *driver_tb;
 
         //Encoder
         int count_turn_en;

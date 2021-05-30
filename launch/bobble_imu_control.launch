@@ -1,8 +1,10 @@
 <!-- ComplementaryFilter launch file -->
 <launch>
-
+<arg name="drv" default="0" />
   #### Controller
-  <include file="$(find balance_robot_control)/launch/bobble_control.launch"/>
+  <include file="$(find balance_robot_control)/launch/bobble_control.launch">
+    <arg name="DRV_FLG" value="$(arg drv)" />
+  </include>
 
   #### IMU
   <include file="$(find balance_robot_control)/launch/publish_imu_complementary_filtered.launch"/>

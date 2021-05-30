@@ -14,6 +14,7 @@ void BalanceRealController::init(ros::NodeHandle nh, ros::NodeHandle pnh){
     node_ = nh;
     reset();
     loadConfig();
+    pnh.getParam("/DRV_FLG", DRV_FLG); // 1:TB6612 0:DRV8833
     set_driver(pnh);
     BalanceBaseController::setupFilters();
     BalanceBaseController::setupControllers();
@@ -48,11 +49,20 @@ void BalanceRealController::set_driver(ros::NodeHandle pnh){
     BalanceBaseController::unpackParameter("PULSE_NUM", PULSE_NUM, 11);
     BalanceBaseController::unpackParameter("REDUCTION_RATIO", REDUCTION_RATIO, 90);
 
-    BalanceBaseController::unpackParameter("MOTOR_DRIVER_RI1", MOTOR_DRIVER_RI1, 12);
-    BalanceBaseController::unpackParameter("MOTOR_DRIVER_RI2", MOTOR_DRIVER_RI2, 25);
-
-    BalanceBaseController::unpackParameter("MOTOR_DRIVER_LI1", MOTOR_DRIVER_LI1, 13);
-    BalanceBaseController::unpackParameter("MOTOR_DRIVER_LI2", MOTOR_DRIVER_LI2, 26);
+    
+    if(DRV_FLG==FLG_TB6612){
+        BalanceBaseController::unpackParameter("MOTOR_DRIVER_RI1_TB", MOTOR_DRIVER_RI1, 22);
+        BalanceBaseController::unpackParameter("MOTOR_DRIVER_RI2_TB", MOTOR_DRIVER_RI2, 25);
+        BalanceBaseController::unpackParameter("MOTOR_PWM_R", MOTOR_PWM_R, 12);
+        BalanceBaseController::unpackParameter("MOTOR_DRIVER_LI1_TB", MOTOR_DRIVER_LI1, 5);
+        BalanceBaseController::unpackParameter("MOTOR_DRIVER_LI2_TB", MOTOR_DRIVER_LI2, 6);
+        BalanceBaseController::unpackParameter("MOTOR_PWM_L", MOTOR_PWM_L, 13);
+    } else {
+        BalanceBaseController::unpackParameter("MOTOR_DRIVER_RI1", MOTOR_DRIVER_RI1, 12);
+        BalanceBaseController::unpackParameter("MOTOR_DRIVER_RI2", MOTOR_DRIVER_RI2, 25);
+        BalanceBaseController::unpackParameter("MOTOR_DRIVER_LI1", MOTOR_DRIVER_LI1, 13);
+        BalanceBaseController::unpackParameter("MOTOR_DRIVER_LI2", MOTOR_DRIVER_LI2, 26);
+    }
 
     BalanceBaseController::unpackParameter("MOTOR_FREQ", MOTOR_FREQ, 50000);
 
@@ -60,10 +70,17 @@ void BalanceRealController::set_driver(ros::NodeHandle pnh){
 
     count_turn_en = 4 * PULSE_NUM;
     count_turn_out = count_turn_en * REDUCTION_RATIO;
-
-    driver = new DRV8833();
-    driver->setPinMode(pi, MOTOR_DRIVER_LI1, MOTOR_DRIVER_LI2, MOTOR_DRIVER_RI1, MOTOR_DRIVER_RI2);
-
+    if(DRV_FLG==FLG_TB6612){
+        driver_tb = new TB6612();
+        driver_tb->setPinMode(pi, MOTOR_DRIVER_LI1, MOTOR_DRIVER_LI2, MOTOR_PWM_L, MOTOR_DRIVER_RI1, MOTOR_DRIVER_RI2, MOTOR_PWM_R);
+        ROS_INFO("Set driver : TB6612");
+    }
+    else
+    {
+        driver_drv = new DRV8833();
+        driver_drv->setPinMode(pi, MOTOR_DRIVER_LI1, MOTOR_DRIVER_LI2, MOTOR_DRIVER_RI1, MOTOR_DRIVER_RI2);
+        ROS_INFO("Set driver : DRV8833");
+    }
     // pigpio
     pi = pigpio_start(0,0);
     if ( pi < 0 ){
@@ -193,13 +210,27 @@ void BalanceRealController::estimateState(){
 void BalanceRealController::sendMotorCommands(){
     double output_L = outputs.LeftMotorEffortCmd * config.OutputToPwmFactor;
     double output_R = outputs.RightMotorEffortCmd * config.OutputToPwmFactor;
-    driver->drive(driver->A, limit(output_L, PWM_RANGE));
-    driver->drive(driver->B, limit(output_R, PWM_RANGE));
+    if(DRV_FLG==FLG_TB6612){
+        driver_tb->drive(driver_tb->A, limit(output_L, PWM_RANGE));
+        driver_tb->drive(driver_tb->B, limit(output_R, PWM_RANGE));
+    }
+    else
+    {
+        driver_drv->drive(driver_tb->A, limit(output_L, PWM_RANGE));
+        driver_drv->drive(driver_tb->B, limit(output_R, PWM_RANGE));
+    }
 }
 
 void BalanceRealController::stopMotor(){
-    driver->drive(driver->A, 0);
-    driver->drive(driver->B, 0);
+    if(DRV_FLG==FLG_TB6612){
+        driver_tb->drive(driver_tb->A, 0);
+        driver_tb->drive(driver_tb->B, 0);
+    }
+    else
+    {
+        driver_drv->drive(driver_tb->A, 0);
+        driver_drv->drive(driver_tb->B, 0);
+    }
 }
 
 void BalanceRealController::encoder_count_R_A(){

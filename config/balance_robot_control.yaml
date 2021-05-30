@@ -9,11 +9,19 @@ PULSE_NUM: 11
 REDUCTION_RATIO: 90
 
 # Motor driver -> DRV8833
-MOTOR_DRIVER_RI1: 12 # forward pwm
-MOTOR_DRIVER_RI2: 25 # backward pwm
+MOTOR_DRIVER_RI1_DRV: 12 # forward pwm
+MOTOR_DRIVER_RI2_DRV: 25 # backward pwm
+MOTOR_DRIVER_LI1_DRV: 13 # forward pwm
+MOTOR_DRIVER_LI2_DRV: 26 # backward pwm
 
-MOTOR_DRIVER_LI1: 13 # forward pwm
-MOTOR_DRIVER_LI2: 26 # backward pwm
+#
+# Motor driver -> TB6612
+MOTOR_DRIVER_RI1_TB: 22 # forward pwm
+MOTOR_DRIVER_RI2_TB: 25 # backward pwm
+MOTOR_PWM_R: 12
+MOTOR_DRIVER_LI1_TB: 5 # forward pwm
+MOTOR_DRIVER_LI2_TB: 6 # backward pwm
+MOTOR_PWM_L: 13
 
 MOTOR_FREQ: 50000 # 50 kHz (= max motor driver freq)
 
@@ -30,7 +38,7 @@ KI_L: 1.0
 KD_L: 1.0
 
 # Robot info
-WHEEL_DIA: 0.066 #[m]
+WHEEL_DIA: 0.065 #[m]
 WHEEL_DIST: 0.180 #[m]
 
 # Control ratio
